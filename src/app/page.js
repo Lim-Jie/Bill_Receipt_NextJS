@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon } from 'lucide-react';
+import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 export default function Home() {
@@ -12,6 +12,8 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [showBillModal, setShowBillModal] = useState(false);
   const [currentParticipantIndex, setCurrentParticipantIndex] = useState(0);
+  const [expandedCards, setExpandedCards] = useState({}); // Track which cards are expanded
+  const [participantPaymentStatus, setParticipantPaymentStatus] = useState({}); // Track payment status
 
   const recognitionRef = useRef(null);
 
@@ -176,6 +178,38 @@ export default function Home() {
     setShowBillModal(false);
   };
 
+  const toggleCardExpansion = (participantIndex) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [participantIndex]: !prev[participantIndex]
+    }));
+  };
+
+  // Function to toggle payment status
+  const togglePaymentStatus = (participantEmail) => {
+    setParticipantPaymentStatus(prev => ({
+      ...prev,
+      [participantEmail]: !prev[participantEmail]
+    }));
+  };
+
+  // Function to check if participant is bill owner
+  const isBillOwner = (participantEmail) => {
+
+    console.log("Bill owner : ", response?.data?.paid_by)
+    console.log("isBillOwner : ", participantEmail)
+    console.log("ISBillOwner? ",response?.data?.paid_by === participantEmail)
+    return response?.data?.paid_by === participantEmail;
+  };
+
+  // Function to get payment status
+  const getPaymentStatus = (participantEmail) => {
+    if (isBillOwner(participantEmail)) {
+      return 'owner';
+    }
+    return participantPaymentStatus[participantEmail] ? 'paid' : 'unpaid';
+  };
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col relative">
       {/* Header */}
@@ -188,12 +222,12 @@ export default function Home() {
       {/* Upper Half - Chat Section */}
       <div className="h-1/2 flex flex-col">
         {/* Chat History */}
-        <div className="flex-1 px-4 py-4 space-y-3 overflow-y-auto">
+        <div className="flex-1 px-4 py-4 bg-white space-y-3 overflow-y-auto">
           {chatHistory.map((chat, index) => (
             <div key={index} className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${chat.type === 'user'
+              <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${chat.type === 'user'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white shadow-sm text-gray-800'
+                : 'bg-white shadow-sm text-gray-700'
                 }`}>
                 <p className="text-sm whitespace-pre-wrap">{chat.content}</p>
               </div>
@@ -256,70 +290,141 @@ export default function Home() {
       <div className="h-1/2 bg-white ">
         {response?.data ? (
           <div className="h-full flex flex-col">
-            {/* Bill Breakdown Header */}
-            <div className="px-4 py-3">
-              <h2 className="text-lg font-semibold text-gray-800">Bill Breakdown</h2>
-            </div>
-
             {/* Participants and Items */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-              {response.data.participants.map((participant, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4">
-                  {/* Participant Name */}
-      
-                  {/* Total for Participant */}
-                  <div className="pb-2 flex justify-between items-center font-semibold">
-                    <span className="text-gray-800">
-                      Total {participant.email.split('@')[0].toUpperCase()}
-                    </span>
-                    <span className="text-gray-800 text-lg">
-                      {formatCurrency(participant.total_paid)}
-                    </span>
-                  </div>
+              {response.data.participants.map((participant, index) => {
+                const isExpanded = expandedCards[index];
+                const itemsToShow = isExpanded ? participant.items_paid : participant.items_paid.slice(0, 2);
+                const hasMoreItems = participant.items_paid.length > 2;
+                const paymentStatus = getPaymentStatus(participant.email);
 
-                  {/* Items List */}
-                  <div className="space-y-2 mb-3">
-                    {participant.items_paid.map((item, itemIndex) => {
-                      const billItem = response.data.items.find(i => i.id === item.id);
-                      const isLast = itemIndex === participant.items_paid.length - 1;
-                      
-                      return (
-                        <div key={itemIndex} className="flex items-start space-x-3 p-3 rounded-lg">
-                          {/* Timeline/Log UI */}
-                          <div className="flex flex-col items-center flex-shrink-0">
-                            {/* Number Circle */}
-                            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                              {itemIndex + 1}
-                            </div>
-                            {/* Connecting Line */}
-                            {!isLast && (
-                              <div className="w-0.5 h-8 bg-gray-300 mt-1"></div>
-                            )}
+                return (
+                  <div key={index} className="rounded-lg p-4">
+                    <div className={`bg-white border-gray-100/60 border-2 rounded-2xl p-4 shadow-lg h-full transition-all duration-300 ease-in-out`}>
+                      {/* Header */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className={`bg-black rounded-full p-2 relative`}>
                           </div>
-                          
-                          {/* Item Content */}
-                          <div className="flex-1 flex justify-between items-center">
-                            <div className='flex flex-col justify-center font-custom'>
-                              <span className="text-gray-800 font-medium text-base">
-                                {billItem?.name || `Item ${item.id}`}
-                              </span>
-                              <div className='text-gray-500 text-sm font-normal'>
-                                {item.percentage?.toString().slice(0, 5)}%
-                              </div>
-                            </div>
-
-                            <span className="px-3 py-1.5 bg-blue-200/80 rounded-xl text-gray-800 text-sm font-custom">
-                              {item.value}
-                            </span>
+                          <div>
+                            <h4 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                              {participant.email.split('@')[0].toUpperCase()}
+                            </h4>
+                            <p className="text-xs text-gray-400">{participant.email}</p>
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-gray-800">
+                            {formatCurrency(participant.total_paid)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Items List with Animation */}
+                      <div className="mb-3">
+                        <div className="space-y-2">
+                          {itemsToShow.map((item, itemIndex) => {
+                            const billItem = response.data.items.find(i => i.id === item.id);
+
+                            return (
+                              <div
+                                key={itemIndex}
+                                className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 transition-all duration-300 ease-in-out transform ${isExpanded && itemIndex >= 2
+                                    ? 'opacity-100 translate-y-0'
+                                    : itemIndex >= 2
+                                      ? 'opacity-0 -translate-y-2'
+                                      : 'opacity-100 translate-y-0'
+                                  }`}
+                                style={{
+                                  transitionDelay: isExpanded && itemIndex >= 2 ? `${(itemIndex - 2) * 100}ms` : '0ms'
+                                }}
+                              >
+                                {/* Left side - ID and Item Info */}
+                                <div className="flex items-center space-x-3">
+                                  <div className="flex flex-row items-center px-2 py-1 bg-purple-500 text-white rounded-full text-xs font-bold flex-shrink-0 whitespace-nowrap">
+                                    ID: {itemIndex + 1}
+                                  </div>
+
+                                  <div className="flex flex-col">
+                                    <span className="text-gray-800 font-medium text-base">
+                                      {billItem?.name || `Item ${item.id}`}
+                                    </span>
+                                    <div className="text-gray-500 text-sm">
+                                      {item.percentage?.toString().slice(0, 5)}%
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Right side - Price and Tax Info */}
+                                <div className="flex flex-col items-end">
+                                  <span className="text-gray-800 font-semibold text-base mb-1">
+                                    {formatCurrency(item.value)}
+                                  </span>
+                                  <div className="text-xs text-right font-bold">
+                                    <div className="text-purple-500">incl 10%</div>
+                                    <div className="text-purple-300">incl 6%</div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Expand/Collapse Button */}
+                        {hasMoreItems && (
+                          <button
+                            onClick={() => toggleCardExpansion(index)}
+                            className="w-full mt-3 flex items-center justify-center space-x-2 py-2 text-gray-600 hover:text-purple-700 transition-colors duration-200"
+                          >
+                            <span className="text-sm font-bold animate-pulse">
+                              {isExpanded
+                                ? `Show Less`
+                                : `Show ${participant.items_paid.length - 2} More Items`
+                              }
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUpIcon className="w-4 h-4 transition-transform duration-300" />
+                            ) : (
+                              <ChevronDownIcon className="w-4 h-4 transition-transform duration-300" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex space-x-2">
+                        {paymentStatus === 'owner' ? (
+                          <div className="flex flex-row w-full justify-center items-center gap-3 bg-white border border-gray-200 py-2 px-4 rounded-full text-center text-sm font-medium">
+                            <UserIcon className="w-4 h-4" />
+                            <p>Bill Owner</p>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => togglePaymentStatus(participant.email)}
+                            className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${
+                              paymentStatus === 'paid'
+                                ? 'bg-white border border-gray-200 text-black'
+                                : 'bg-black text-white'
+                            }`}
+                          >
+                            {paymentStatus === 'paid' ? (
+                              <>
+                                <CheckIcon width={16} height={16} className='stroke-green-600' />
+                                <p>Paid</p>
+                              </>
+                            ) : (
+                              <>
+                                <ListTodoIcon width={16} height={16} className='stroke-white' />
+                                <p>Unpaid</p>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-
-
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* View Bill Button */}
@@ -374,22 +479,20 @@ export default function Home() {
                 <div className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide snap-x snap-mandatory">
                   {response.data.participants.map((participant, index) => {
                     const colorScheme = getRandomColor();
-                    const isPaid = Math.random() > 0.5; // Random paid status for demo
+                    const paymentStatus = getPaymentStatus(participant.email);
 
                     return (
                       <div key={index} className="flex-shrink-0 w-80 snap-start">
-                        <div className={`${colorScheme.bg} ${colorScheme.border} border-2 rounded-2xl p-4 shadow-lg h-full`}>
-                          {/* Header */}
+                        <div className={`bg-gray-800 border-gray-500/60 border-2 rounded-2xl p-4 shadow-lg h-full`}>
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center space-x-3">
-                              <div className={`${colorScheme.accent} rounded-full p-2`}>
-
+                              <div className={`${colorScheme.accent} rounded-full p-2 relative`}>
                               </div>
                               <div>
-                                <h4 className="font-bold text-gray-800 text-lg">
+                                <h4 className="font-bold text-gray-200 text-lg flex items-center gap-2">
                                   {participant.email.split('@')[0].toUpperCase()}
                                 </h4>
-                                <p className="text-xs text-gray-600">{participant.email}</p>
+                                <p className="text-xs text-gray-400">{participant.email}</p>
                               </div>
                             </div>
                             <div className="text-right">
@@ -403,22 +506,38 @@ export default function Home() {
 
                           {/* Bill Info */}
                           <div className="mb-3">
-                            <div className="text-2xl font-bold text-gray-800">
+                            <div className="text-2xl font-bold text-gray-100">
                               {formatCurrency(participant.total_paid)}
                             </div>
                           </div>
 
                           {/* Action Buttons */}
                           <div className="flex space-x-2">
-                            {isPaid ? (
-                              <div className="flex flex-row w-full justify-center items-center gap-3 bg-white text-gray-800 py-2 px-4 rounded-full text-center text-sm font-medium">
-                                <CheckIcon width={16} height={16}
-                                  className='stroke-green-500' />
-                                <p>Paid</p>
+                            {paymentStatus === 'owner' ? (
+                              <div className="flex flex-row w-full justify-center items-center gap-3 bg-black text-white py-2 px-4 rounded-full text-center text-sm font-medium">
+                                <UserIcon className="w-4 h-4 fill-white" />
+                                <p>Bill Owner</p>
                               </div>
                             ) : (
-                              <button className="flex-1 bg-gray-800 text-white py-2 px-4 rounded-full text-sm font-medium hover:bg-gray-700 transition-colors">
-                                Pay
+                              <button
+                                onClick={() => togglePaymentStatus(participant.email)}
+                                className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${
+                                  paymentStatus === 'paid'
+                                    ? 'bg-white border border-gray-100 text-black'
+                                    : 'bg-black text-white'
+                                }`}
+                              >
+                                {paymentStatus === 'paid' ? (
+                                  <>
+                                    <CheckIcon width={16} height={16} className='stroke-green-600' />
+                                    <p>Paid</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ListTodoIcon width={16} height={16} className='stroke-white' />
+                                    <p>Unpaid</p>
+                                  </>
+                                )}
                               </button>
                             )}
                           </div>
