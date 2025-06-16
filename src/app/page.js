@@ -1,603 +1,407 @@
-'use client';
+"use client";
 
-import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { Plus, Check, Users, Calendar, MapPin, Tag, ForkKnife } from 'lucide-react';
 
-export default function Home() {
-  const [message, setMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([]);
-  const [response, setResponse] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [isListening, setIsListening] = useState(false);
-  const [showBillModal, setShowBillModal] = useState(false);
-  const [currentParticipantIndex, setCurrentParticipantIndex] = useState(0);
-  const [expandedCards, setExpandedCards] = useState({}); // Track which cards are expanded
-  const [participantPaymentStatus, setParticipantPaymentStatus] = useState({}); // Track payment status
+export default function Main() {
+  const router = useRouter();
+  const [selectedTransactions, setSelectedTransactions] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState('This Month'); // New state for period selection
 
-  const recognitionRef = useRef(null);
+  // Time period options
+  const periodOptions = ['Today', 'Weekly', 'This Month'];
 
-  // Initialize speech recognition
-  // Initialize speech recognition
-  useEffect(() => {
-    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+  // Mock data for the pie chart
+  const expenseData = [
+    { name: 'Food & Dining', value: 200, color: '#2C7FFF' },
+    { name: 'Transportation', value: 100, color: '#193CB8' },
+    { name: 'Groceries', value: 65, color: '#8B5CF6' },
+  ];
 
-      // Updated settings for better continuous recording
-      recognitionRef.current.continuous = true; // Changed to true for continuous recording
-      recognitionRef.current.interimResults = true; // Changed to true to get partial results
-      recognitionRef.current.lang = 'en-US';
-      recognitionRef.current.maxAlternatives = 1;
-
-      recognitionRef.current.onresult = (event) => {
-        let transcript = '';
-
-        // Get the final transcript from all results
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            transcript += event.results[i][0].transcript;
-          }
-        }
-
-        // Only update message when we have a final result
-        if (transcript.trim()) {
-          setMessage(prev => prev + ' ' + transcript);
-        }
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-
-        // Auto-restart on certain errors
-        if (event.error === 'no-speech' || event.error === 'audio-capture') {
-          setTimeout(() => {
-            if (isListening) {
-              startListening();
-            }
-          }, 1000);
-        }
-      };
-
-      recognitionRef.current.onend = () => {
-        // Don't automatically set listening to false - let user control it
-        if (isListening) {
-          // Restart recognition if user is still in listening mode
-          setTimeout(() => {
-            if (isListening && recognitionRef.current) {
-              try {
-                recognitionRef.current.start();
-              } catch (error) {
-                console.error('Error restarting recognition:', error);
-                setIsListening(false);
-              }
-            }
-          }, 100);
-        }
-      };
-
-      recognitionRef.current.onstart = () => {
-        console.log('Speech recognition started');
-      };
+  // Mock transaction data
+  const transactions = [
+    {
+      id: 1,
+      venue: "McDonald's Pavilion KL",
+      category: "Food & Dining",
+      totalCost: 45.80,
+      date: "2025-06-15",
+      participants: 3,
+      isSelected: false
+    },
+    {
+      id: 2,
+      venue: "Grab (KLCC to Home)",
+      category: "Transportation",
+      totalCost: 28.50,
+      date: "2025-06-14",
+      participants: 2,
+      isSelected: false
+    },
+    {
+      id: 3,
+      venue: "Village Grocer",
+      category: "Groceries",
+      totalCost: 156.90,
+      date: "2025-06-13",
+      participants: 4,
+      isSelected: false
+    },
+    {
+      id: 4,
+      venue: "Starbucks Mid Valley",
+      category: "Food & Dining",
+      totalCost: 32.40,
+      date: "2025-06-12",
+      participants: 2,
+      isSelected: false
+    },
+    {
+      id: 5,
+      venue: "Shell Petrol Station",
+      category: "Transportation",
+      totalCost: 65.00,
+      date: "2025-06-11",
+      participants: 3,
+      isSelected: false
     }
-  }, [isListening]); // Added isListening as dependency
+  ];
 
-  const startListening = () => {
-    if (recognitionRef.current && !isListening) {
-      try {
-        setIsListening(true);
-        recognitionRef.current.start();
-      } catch (error) {
-        console.error('Error starting recognition:', error);
-        setIsListening(false);
-      }
+  // Mock user data
+  const mockUsers = [
+    {
+      id: 1,
+      name: "Sarah Chen",
+      email: "sarah.chen@gmail.com",
+      avatar: "SC"
+    },
+    {
+      id: 2,
+      name: "Ahmad Rahman",
+      email: "ahmad.rahman@gmail.com",
+      avatar: "AR"
+    },
+    {
+      id: 3,
+      name: "Emma Wong",
+      email: "emma.wong@gmail.com",
+      avatar: "EW"
     }
-  };
-
-  const stopListening = () => {
-    if (recognitionRef.current && isListening) {
-      setIsListening(false);
-      recognitionRef.current.stop();
-    }
-  };
-
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!message.trim()) return;
-
-    const userMessage = message.trim();
-    setChatHistory(prev => [...prev, { type: 'user', content: userMessage }]);
-    setMessage('');
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: userMessage }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
-      setResponse(data);
-      setChatHistory(prev => [...prev, { type: 'assistant', content: data.response }]);
-    } catch (err) {
-      setError(err.message || 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
-  };
+  ];
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
       currency: 'MYR',
+      minimumFractionDigits: 2,
     }).format(amount);
   };
 
-  const getRandomColor = () => {
-    const colors = [
-      { bg: 'bg-gradient-to-br from-blue-50 to-blue-100', border: 'border-blue-200', accent: 'bg-blue-600' },
-      { bg: 'bg-gradient-to-br from-green-50 to-green-100', border: 'border-green-200', accent: 'bg-green-600' },
-      { bg: 'bg-gradient-to-br from-purple-50 to-purple-100', border: 'border-purple-200', accent: 'bg-purple-600' },
-      { bg: 'bg-gradient-to-br from-pink-50 to-pink-100', border: 'border-pink-200', accent: 'bg-pink-600' },
-      { bg: 'bg-gradient-to-br from-yellow-50 to-yellow-100', border: 'border-yellow-200', accent: 'bg-yellow-600' },
-      { bg: 'bg-gradient-to-br from-indigo-50 to-indigo-100', border: 'border-indigo-200', accent: 'bg-indigo-600' },
-      { bg: 'bg-gradient-to-br from-red-50 to-red-100', border: 'border-red-200', accent: 'bg-red-600' },
-      { bg: 'bg-gradient-to-br from-orange-50 to-orange-100', border: 'border-orange-200', accent: 'bg-orange-600' }
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
-  const removeParticipant = (index) => {
-    if (response?.data?.participants) {
-      const updatedParticipants = response.data.participants.filter((_, i) => i !== index);
-      setResponse(prev => ({
-        ...prev,
-        data: {
-          ...prev.data,
-          participants: updatedParticipants
-        }
-      }));
-      if (currentParticipantIndex >= updatedParticipants.length) {
-        setCurrentParticipantIndex(Math.max(0, updatedParticipants.length - 1));
+  const toggleTransactionSelection = (index) => {
+    setSelectedTransactions(prev =>
+      prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
+
+  const toggleUserSelection = (userId) => {
+    const user = mockUsers.find(u => u.id === userId);
+    if (!user) return;
+
+    setSelectedUsers(prev => {
+      const isSelected = prev.some(u => u.id === userId);
+      if (isSelected) {
+        return prev.filter(u => u.id !== userId);
+      } else {
+        return [...prev, user];
       }
-    }
+    });
   };
 
-  const handleConfirm = () => {
-    alert('Bill confirmed! Payment requests will be sent to all participants.');
-    setShowBillModal(false);
-  };
-
-  const toggleCardExpansion = (participantIndex) => {
-    setExpandedCards(prev => ({
-      ...prev,
-      [participantIndex]: !prev[participantIndex]
-    }));
-  };
-
-  // Function to toggle payment status
-  const togglePaymentStatus = (participantEmail) => {
-    setParticipantPaymentStatus(prev => ({
-      ...prev,
-      [participantEmail]: !prev[participantEmail]
-    }));
-  };
-
-  // Function to check if participant is bill owner
-  const isBillOwner = (participantEmail) => {
-
-    console.log("Bill owner : ", response?.data?.paid_by)
-    console.log("isBillOwner : ", participantEmail)
-    console.log("ISBillOwner? ",response?.data?.paid_by === participantEmail)
-    return response?.data?.paid_by === participantEmail;
-  };
-
-  // Function to get payment status
-  const getPaymentStatus = (participantEmail) => {
-    if (isBillOwner(participantEmail)) {
-      return 'owner';
-    }
-    return participantPaymentStatus[participantEmail] ? 'paid' : 'unpaid';
+  // Get array of selected emails
+  const getSelectedEmails = () => {
+    return selectedUsers.map(user => user.email);
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col relative">
+    <div className="max-w-md mx-auto min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm px-4 py-3">
-        <h1 className="text-xl font-semibold text-gray-800 text-center">
-          Bill Splitter Chat
-        </h1>
-      </header>
-
-      {/* Upper Half - Chat Section */}
-      <div className="h-1/2 flex flex-col">
-        {/* Chat History */}
-        <div className="flex-1 px-4 py-4 bg-white space-y-3 overflow-y-auto">
-          {chatHistory.map((chat, index) => (
-            <div key={index} className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${chat.type === 'user'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white shadow-sm text-gray-700'
-                }`}>
-                <p className="text-sm whitespace-pre-wrap">{chat.content}</p>
+      <div className="bg-white p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl text-gray-900">JomSplit.com</h1>
+          <div className="flex items-center space-x-2">
+            <div className="flex flex-col gap-1">
+              <div className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm w-fit ml-auto">
+                Li Jie
               </div>
-            </div>
-          ))}
-
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-white border shadow-sm px-4 py-2 rounded-lg">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Chat Input */}
-        <div className="bg-white px-4 py-4">
-          <form onSubmit={handleSubmit} className="flex space-x-2">
-            <div className="flex-1 relative">
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Message.."
-                className="w-full p-3 pr-12 bg-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows="1"
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={isListening ? stopListening : startListening}
-                className={`absolute right-2 top-2 p-2 rounded-full ${isListening ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'
-                  } hover:bg-opacity-80 transition-colors`}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-            <button
-              type="submit"
-              disabled={loading || !message.trim()}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Send
-            </button>
-          </form>
-          {isListening && (
-            <div className="mt-2 text-center text-sm text-red-600">
-              🎤 Listening... Speak now
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Lower Half - Bill Breakdown */}
-      <div className="h-1/2 bg-white ">
-        {response?.data ? (
-          <div className="h-full flex flex-col">
-            {/* Participants and Items */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-              {response.data.participants.map((participant, index) => {
-                const isExpanded = expandedCards[index];
-                const itemsToShow = isExpanded ? participant.items_paid : participant.items_paid.slice(0, 2);
-                const hasMoreItems = participant.items_paid.length > 2;
-                const paymentStatus = getPaymentStatus(participant.email);
-
-                return (
-                  <div key={index} className="rounded-lg p-4">
-                    <div className={`bg-white border-gray-100/60 border-2 rounded-2xl p-4 shadow-lg h-full transition-all duration-300 ease-in-out`}>
-                      {/* Header */}
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center space-x-3">
-                          <div className={`bg-black rounded-full p-2 relative`}>
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-                              {participant.email.split('@')[0].toUpperCase()}
-                            </h4>
-                            <p className="text-xs text-gray-400">{participant.email}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-gray-800">
-                            {formatCurrency(participant.total_paid)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Items List with Animation */}
-                      <div className="mb-3">
-                        <div className="space-y-2">
-                          {itemsToShow.map((item, itemIndex) => {
-                            const billItem = response.data.items.find(i => i.id === item.id);
-
-                            return (
-                              <div
-                                key={itemIndex}
-                                className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 transition-all duration-300 ease-in-out transform ${isExpanded && itemIndex >= 2
-                                    ? 'opacity-100 translate-y-0'
-                                    : itemIndex >= 2
-                                      ? 'opacity-0 -translate-y-2'
-                                      : 'opacity-100 translate-y-0'
-                                  }`}
-                                style={{
-                                  transitionDelay: isExpanded && itemIndex >= 2 ? `${(itemIndex - 2) * 100}ms` : '0ms'
-                                }}
-                              >
-                                {/* Left side - ID and Item Info */}
-                                <div className="flex items-center space-x-3">
-                                  <div className="flex flex-row items-center px-2 py-1 bg-purple-500 text-white rounded-full text-xs font-bold flex-shrink-0 whitespace-nowrap">
-                                    ID: {itemIndex + 1}
-                                  </div>
-
-                                  <div className="flex flex-col">
-                                    <span className="text-gray-800 font-medium text-base">
-                                      {billItem?.name || `Item ${item.id}`}
-                                    </span>
-                                    <div className="text-gray-500 text-sm">
-                                      {item.percentage?.toString().slice(0, 5)}%
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Right side - Price and Tax Info */}
-                                <div className="flex flex-col items-end">
-                                  <span className="text-gray-800 font-semibold text-base mb-1">
-                                    {formatCurrency(item.value)}
-                                  </span>
-                                  <div className="text-xs text-right font-bold">
-                                    <div className="text-purple-500">incl 10%</div>
-                                    <div className="text-purple-300">incl 6%</div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Expand/Collapse Button */}
-                        {hasMoreItems && (
-                          <button
-                            onClick={() => toggleCardExpansion(index)}
-                            className="w-full mt-3 flex items-center justify-center space-x-2 py-2 text-gray-600 hover:text-purple-700 transition-colors duration-200"
-                          >
-                            <span className="text-sm font-bold animate-pulse">
-                              {isExpanded
-                                ? `Show Less`
-                                : `Show ${participant.items_paid.length - 2} More Items`
-                              }
-                            </span>
-                            {isExpanded ? (
-                              <ChevronUpIcon className="w-4 h-4 transition-transform duration-300" />
-                            ) : (
-                              <ChevronDownIcon className="w-4 h-4 transition-transform duration-300" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex space-x-2">
-                        {paymentStatus === 'owner' ? (
-                          <div className="flex flex-row w-full justify-center items-center gap-3 bg-white border border-gray-200 py-2 px-4 rounded-full text-center text-sm font-medium">
-                            <UserIcon className="w-4 h-4" />
-                            <p>Bill Owner</p>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => togglePaymentStatus(participant.email)}
-                            className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${
-                              paymentStatus === 'paid'
-                                ? 'bg-white border border-gray-200 text-black'
-                                : 'bg-black text-white'
-                            }`}
-                          >
-                            {paymentStatus === 'paid' ? (
-                              <>
-                                <CheckIcon width={16} height={16} className='stroke-green-600' />
-                                <p>Paid</p>
-                              </>
-                            ) : (
-                              <>
-                                <ListTodoIcon width={16} height={16} className='stroke-white' />
-                                <p>Unpaid</p>
-                              </>
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* View Bill Button */}
-            <div className="px-4 py-3">
-              <button
-                onClick={() => setShowBillModal(true)}
-                className="w-full rounded-3xl bg-purple-600 text-white py-3 px-4 font-medium hover:bg-purple-700 transition-colors"
-              >
-                View Bill Details
-              </button>
+              <p className="text-gray-500 text-sm mb-4">lijiebiz@gmail.com</p>
             </div>
           </div>
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <p className="text-lg mb-2">No bill data yet</p>
-              <p className="text-sm">Start a conversation to split your bill!</p>
+        </div>
+
+        {/* Time Period Selector */}
+        <div className="mb-6">
+          <div className="bg-gray-100 p-1 rounded-2xl flex">
+            {periodOptions.map((period) => (
+              <button
+                key={period}
+                onClick={() => setSelectedPeriod(period)}
+                className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  selectedPeriod === period
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* This Month Section */}
+        <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-gray-600">
+                Total bill - {selectedPeriod}
+              </p>
+              <p className="text-2xl text-gray-900">MYR 365.10</p>
             </div>
+            <div className="w-32 h-32">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={expenseData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={60}
+                    fill="#D1D5DB"
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {expenseData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Category Legend */}
+          <div className="mt-4 space-y-2">
+            {expenseData.slice(0, 3).map((entry, index) => (
+              <div key={index} className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: entry.color }}
+                  ></div>
+                  <span className="text-sm text-gray-700">{entry.name}</span>
+                </div>
+                <span className="text-sm font-medium text-gray-900">
+                  MYR {entry.value.toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* <div className="text-right mb-6">
+          <p className="text-lg font-medium text-gray-900">Add to new bill</p>
+        </div> */}
+
+        {/* Add Bill Cards - Horizontally Scrollable */}
+        <div className="overflow-x-auto pb-4 mb-8">
+          <div className="flex space-x-4 min-w-max">
+            {mockUsers.map((user, index) => {
+              const isSelected = selectedUsers.some(u => u.id === user.id);
+              return (
+                <div key={user.id} className="w-32 flex-shrink-0">
+                  <div
+                    className={`rounded-2xl p-4 text-center cursor-pointer transition-all duration-200 ${isSelected
+                      ? 'bg-purple-100 border-2 border-purple-300'
+                      : 'bg-gray-100 hover:bg-gray-200'
+                      }`}
+                    onClick={() => toggleUserSelection(user.id)}
+                  >
+                    <div className="mb-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium mx-auto mb-2 ${isSelected ? 'bg-purple-500 text-white' : 'bg-gray-400 text-white'
+                        }`}>
+                        {user.avatar}
+                      </div>
+                      <p className="text-xs font-medium text-gray-900 truncate">{user.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto transition-colors ${isSelected
+                      ? 'bg-purple-500'
+                      : 'bg-blue-400 hover:bg-blue-500'
+                      }`}>
+                      {isSelected ? (
+                        <Check className="w-6 h-6 text-white" />
+                      ) : (
+                        <Plus className="w-6 h-6 text-white" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Display selected emails for debugging */}
+        {selectedUsers.length > 0 && (
+          <div className="mb-4 p-3 bg-purple-50 rounded-lg">
+            <p className="text-sm font-medium text-purple-900 mb-1">Selected users:</p>
+            <p className="text-xs text-purple-700">{getSelectedEmails().join(', ')}</p>
           </div>
         )}
       </div>
 
-      {/* Bottom Slide-up Modal */}
-      {showBillModal && response?.data && (
-        <>
-          {/* Overlay */}
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setShowBillModal(false)}
-          />
+      {/* Your Transactions Section */}
+      <div className="px-4 mb-20 bg-white">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Your transactions</h3>
 
-          {/* Modal */}
-          <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl animate-slide-up max-h-[85vh] overflow-hidden">
-            {/* Handle Bar */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
-            </div>
+        {/* Transaction List */}
+        <div className="relative">
+          <div className="space-y-3">
+            {transactions
+              .slice(0, showAllTransactions ? transactions.length : 3)
+              .map((transaction, index) => (
+                <div
+                  key={transaction.id}
+                  className={`rounded-2xl p-4 bg-white shadow-sm outline-1 outline-gray-100/80 transition-all duration-200 ${selectedTransactions.includes(index)
+                    ? 'border-gray-200 '
+                    : 'border-gray-100'
+                    }`}
+                >
+                  {/* Header with Venue and Total Cost */}
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <div className="rounded-lg flex p-1">
+                          <ForkKnife className="w-4 h-4 text-purple-500 stroke-2 fill-purple-300" />
+                        </div>
+                        <h4 className="text-gray-900 text-base font-medium">{transaction.venue}</h4>
+                      </div>
 
-            {/* Billing Section */}
-            <div className="px-6 py-4 overflow-y-auto max-h-[50vh]">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Billing</h3>
-                <div className="flex space-x-4 text-sm">
-                  <span className="text-gray-400">Near By</span>
-                  <span className="text-gray-800 font-medium border-b-2 border-gray-800">Recent</span>
-                  <span className="text-gray-400">History</span>
-                </div>
-              </div>
-
-              {/* Horizontal Participant Cards Container */}
-              <div className="mb-6">
-                <div className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide snap-x snap-mandatory">
-                  {response.data.participants.map((participant, index) => {
-                    const colorScheme = getRandomColor();
-                    const paymentStatus = getPaymentStatus(participant.email);
-
-                    return (
-                      <div key={index} className="flex-shrink-0 w-80 snap-start">
-                        <div className={`bg-gray-800 border-gray-500/60 border-2 rounded-2xl p-4 shadow-lg h-full`}>
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center space-x-3">
-                              <div className={`${colorScheme.accent} rounded-full p-2 relative`}>
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-gray-200 text-lg flex items-center gap-2">
-                                  {participant.email.split('@')[0].toUpperCase()}
-                                </h4>
-                                <p className="text-xs text-gray-400">{participant.email}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <button className="text-gray-400 hover:text-gray-600">
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Bill Info */}
-                          <div className="mb-3">
-                            <div className="text-2xl font-bold text-gray-100">
-                              {formatCurrency(participant.total_paid)}
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex space-x-2">
-                            {paymentStatus === 'owner' ? (
-                              <div className="flex flex-row w-full justify-center items-center gap-3 bg-black text-white py-2 px-4 rounded-full text-center text-sm font-medium">
-                                <UserIcon className="w-4 h-4 fill-white" />
-                                <p>Bill Owner</p>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => togglePaymentStatus(participant.email)}
-                                className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${
-                                  paymentStatus === 'paid'
-                                    ? 'bg-white border border-gray-100 text-black'
-                                    : 'bg-black text-white'
-                                }`}
-                              >
-                                {paymentStatus === 'paid' ? (
-                                  <>
-                                    <CheckIcon width={16} height={16} className='stroke-green-600' />
-                                    <p>Paid</p>
-                                  </>
-                                ) : (
-                                  <>
-                                    <ListTodoIcon width={16} height={16} className='stroke-white' />
-                                    <p>Unpaid</p>
-                                  </>
-                                )}
-                              </button>
-                            )}
+                      {/* Details Row - Fixed Layout */}
+                      <div className="flex items-center justify-between text-sm text-gray-600 mt-2">
+                        <div className="flex items-center space-x-6">
+                          <div className="flex flex-col items-center mt-3">
+                            <span className="text-xs">{formatDate(transaction.date)}</span>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
 
-                {/* Scroll Indicator Dots */}
-                <div className="flex justify-center space-x-2 mt-4">
-                  {response.data.participants.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`w-2 h-2 rounded-full ${index === currentParticipantIndex ? 'bg-gray-800' : 'bg-gray-300'
-                        }`}
-                    />
-                  ))}
+                    <div className="text-right flex items-center space-x-3">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex text-xl font-bold text-gray-700 ml-auto">
+                          {formatCurrency(transaction.totalCost)}
+                        </div>
+                        <div className="flex flex-row items-center gap-2 text-md">
+                          <span className="">Paid</span>
+                          <span className=" font-semibold text-purple-400">
+                            MYR 89.40
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              ))}
+          </div>
+
+          {/* Fade Effect and View More Button */}
+          {!showAllTransactions && transactions.length > 3 && (
+            <div className="relative">
+              {/* Fade overlay */}
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none"></div>
+
+              {/* View More Button */}
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={() => setShowAllTransactions(true)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center space-x-2"
+                >
+                  <span>View more ({transactions.length - 3} more)</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
               </div>
+            </div>
+          )}
 
-              {/* Add Split Billing Button */}
+          {/* Show Less Button */}
+          {showAllTransactions && transactions.length > 3 && (
+            <div className="flex justify-center pt-4">
               <button
-                onClick={handleConfirm}
-                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-4 px-6 rounded-2xl font-medium text-lg shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200"
+                onClick={() => setShowAllTransactions(false)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center space-x-2"
               >
-                Add Split Billing
+                <span>Show less</span>
+                <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
             </div>
-          </div>
-        </>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="fixed top-4 left-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 z-40">
-          <p className="text-red-700 text-sm">{error}</p>
+          )}
         </div>
-      )}
+      </div>
 
-      <style jsx>{`
-        @keyframes slide-up {
-          from {
-            transform: translateY(100%);
-          }
-          to {
-            transform: translateY(0);
-          }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
+      {/* Bottom Action Bar */}
+      <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            {selectedTransactions.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-blue-400 rounded flex items-center justify-center">
+                  <Check className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-gray-600">
+                  {selectedTransactions.length} transactions
+                </span>
+              </div>
+            )}
+            {selectedUsers.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-purple-400 rounded flex items-center justify-center">
+                  <Users className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-gray-600">
+                  {selectedUsers.length} users
+                </span>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              console.log('Selected emails:', getSelectedEmails());
+              router.push("/split_bill");
+            }}
+            className="bg-purple-600 text-white px-6 py-3 rounded-full font-medium hover:bg-purple-700 transition-colors"
+          >
+            Scan new receipt
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
