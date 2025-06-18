@@ -311,14 +311,18 @@ export default function SplitPage() {
     setItems(newItems)
   }
 
-  const calculatePersonTotal = (personEmail) => {
+  const calculatePersonTotal = useCallback(() => {
     return items.reduce((total, item) => {
       if (item.assignedTo.includes(personEmail)) {
         return total + item.nett_price / item.assignedTo.length
       }
       return total
     }, 0)
-  }
+  }, [items])
+
+  useEffect(() => {
+    calculatePersonTotal()
+  }, [calculatePersonTotal])
 
   const handleFinalize = () => {
     const splitData = {
@@ -357,7 +361,7 @@ export default function SplitPage() {
     setAssignedTotal(assigned)
     const totalAmount = billData?.nett_amount || 0
     setCanFinalize(Math.abs(totalAmount - assigned) < 0.01) // Allow small rounding differences
-  }, [items, people, billData])
+  }, [items, people, billData, calculatePersonTotal])
 
   const refreshDataFromStorage = useCallback(() => {
     console.log("Refreshing data from storage...")
@@ -409,7 +413,7 @@ export default function SplitPage() {
         description: "Using the latest edited receipt data.",
       })
     }
-  }, [billData, items])
+  }, [items])
 
   // Add this useEffect to refresh data when the page becomes visible
   useEffect(() => {

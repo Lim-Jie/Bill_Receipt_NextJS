@@ -1,7 +1,7 @@
 'use client';
 
 import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 export default function SplitBill() {
   const [message, setMessage] = useState('');
@@ -81,9 +81,9 @@ export default function SplitBill() {
         console.log('Speech recognition started');
       };
     }
-  }, [isListening]); // Added isListening as dependency
+  }, [isListening, startListening]); // Added isListening as dependency
 
-  const startListening = () => {
+  const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {
       try {
         setIsListening(true);
@@ -93,7 +93,11 @@ export default function SplitBill() {
         setIsListening(false);
       }
     }
-  };
+  }, []); // Add dependencies if the function uses any state/props
+
+  useEffect(() => {
+    startListening();
+  }, [startListening]);
 
   const stopListening = () => {
     if (recognitionRef.current && isListening) {
