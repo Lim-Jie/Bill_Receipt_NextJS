@@ -2,7 +2,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     
-    const response = await fetch('https://bill-splitter-jx2t.onrender.com/chat', {
+    const response = await fetch(`${process.env.MAIN_BACKEND_API}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

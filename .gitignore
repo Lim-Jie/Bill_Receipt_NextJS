@@ -39,3 +39,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Ignore Node dependencies
+node_modules/
+
+# Ignore backend Python files
+app.py
+requirements.txt
+
+# Ignore secrets
+.env.local
+buoyant-notch-*.json
+
+# Optional: ignore all Python files (only do this if you don’t want ANY Python code tracked)
+# *.py
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Editor and system files
+.vscode/
+.DS_Store

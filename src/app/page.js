@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { Plus, Check, Users, Calendar, MapPin, Tag, ForkKnife } from 'lucide-react';
+import { Plus, Check, Users, Calendar, MapPin, Tag, ForkKnife, LogInIcon, LogIn, LogOut, Icon, HelpCircleIcon, ArrowRight } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth/auth-provider";
+import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Camera, Upload, Receipt, Sparkles } from "lucide-react"
+import FileUpload from "@/components/clientcomponents/fileUpload";
+
 
 export default function Main() {
   const router = useRouter();
@@ -11,6 +18,9 @@ export default function Main() {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('This Month'); // New state for period selection
+  const [isUploading, setIsUploading] = useState(false);
+  const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
+  const { user, loading, signOut, signInWithGoogle } = useAuth()
 
   // Time period options
   const periodOptions = ['Today', 'Weekly', 'This Month'];
@@ -137,17 +147,60 @@ export default function Main() {
     return selectedUsers.map(user => user.email);
   };
 
+  const handleLoginLogout = async () => {
+    if (loading) {
+      return;
+    }
+
+    if (user) {
+      // User is logged in, so log them out
+      try {
+        await signOut();
+        toast.success("Logged out successfully!");
+      } catch (error) {
+        console.error('Error signing out:', error);
+      }
+    } else {
+      // User is not logged in, so sign them in
+      try {
+        await signInWithGoogle();
+        toast.success("Logged in successfully!");
+      } catch (error) {
+        console.error('Error signing in:', error);
+      }
+    }
+  }
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl text-gray-900">JomSplit.com</h1>
           <div className="flex items-center space-x-2">
             <div className="flex flex-col gap-1">
-              <div className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm w-fit ml-auto">
-                Li Jie
+              <div className="flex flex-row items-center ml-auto">
+                {loading ? (
+                  <HelpCircleIcon /> // TODO: Loading Circle here 
+                ) : (
+                  <Button
+                    className="bg-inherit shadow-none hover:bg-gray-100"
+                    onClick={handleLoginLogout}
+                    disabled={loading}
+                  >
+                    {user ? (
+                      <LogOut className="text-red-500 w-5 h-5" />
+                    ) : (
+                      <ArrowRight className="text-purple-500 w-5 h-5" />
+                    )}
+                  </Button>
+                )}
+
+                <span className="h-fit bg-purple-500 text-white px-3 py-1 rounded-full text-sm w-fit">
+                  Li Jie
+                </span>
               </div>
+
               <p className="text-gray-500 text-sm mb-4">lijiebiz@gmail.com</p>
             </div>
           </div>
@@ -160,11 +213,10 @@ export default function Main() {
               <button
                 key={period}
                 onClick={() => setSelectedPeriod(period)}
-                className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  selectedPeriod === period
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${selectedPeriod === period
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 {period}
               </button>
@@ -311,7 +363,7 @@ export default function Main() {
                     </div>
 
                     <div className="text-right flex items-center space-x-3">
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-3">
                         <div className="flex text-xl font-bold text-gray-700 ml-auto">
                           {formatCurrency(transaction.totalCost)}
                         </div>
@@ -366,6 +418,15 @@ export default function Main() {
         </div>
       </div>
 
+      {/* Uploading and taking camera picture of the receipt  */}
+      <FileUpload 
+        isOpen={isFileUploadOpen} 
+        onClose={() => setIsFileUploadOpen(false)}
+        selectedUsers={selectedUsers} // Pass the selected users here
+      />
+
+      <div className="mb-12 py-12" />
+
       {/* Bottom Action Bar */}
       <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 p-4">
         <div className="flex items-center justify-between">
@@ -392,10 +453,7 @@ export default function Main() {
             )}
           </div>
           <button
-            onClick={() => {
-              console.log('Selected emails:', getSelectedEmails());
-              router.push("/split_bill");
-            }}
+            onClick={() => setIsFileUploadOpen(true)}
             className="bg-purple-600 text-white px-6 py-3 rounded-full font-medium hover:bg-purple-700 transition-colors"
           >
             Scan new receipt
