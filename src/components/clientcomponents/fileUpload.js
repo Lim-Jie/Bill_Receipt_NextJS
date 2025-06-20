@@ -37,10 +37,10 @@ async function analyzeReceipt(formData) {
     }
 }
 
-const ProcessingCountdown = ({ isProcessing, onComplete }) => {
-    const [countdown, setCountdown] = useState(4);
+const ProcessingCountdown = ({ isProcessing }) => {
+    const [countdown, setCountdown] = useState(5);
     //COUNTDOWN DEFAULT TO 4 SECONDS FROM FILE UPLOAD 
-    
+
     useEffect(() => {
         if (!isProcessing) {
             setCountdown(5);
@@ -51,7 +51,6 @@ const ProcessingCountdown = ({ isProcessing, onComplete }) => {
             setCountdown((prev) => {
                 if (prev <= 1) {
                     clearInterval(timer);
-                    onComplete?.();
                     return 0;
                 }
                 return prev - 1;
@@ -59,9 +58,9 @@ const ProcessingCountdown = ({ isProcessing, onComplete }) => {
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [isProcessing, onComplete]);
+    }, [isProcessing]);
 
-    if (!isProcessing) return null;
+    if (!isProcessing) return 0;
 
     return (
         <div>
@@ -200,7 +199,7 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
                     >
                         <Camera className="w-5 h-5 mr-2" />
                         {isUploading ?
-                            <ProcessingCountdown isProcessing={isUploading} onComplete={() => setIsUploading(false)} />
+                            <ProcessingCountdown isProcessing={isUploading} />
                             : "Take Photo"}
                     </Button>
 

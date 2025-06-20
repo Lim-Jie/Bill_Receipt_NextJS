@@ -9,6 +9,8 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { Card } from "@/components/ui/card";
 import { Camera, Upload, Receipt, Sparkles } from "lucide-react"
 import FileUpload from "@/components/clientcomponents/fileUpload";
+import { motion } from 'framer-motion';
+import { toast } from "sonner";
 
 
 export default function Main() {
@@ -128,15 +130,20 @@ export default function Main() {
   };
 
   const toggleUserSelection = (userId) => {
-    const user = mockUsers.find(u => u.id === userId);
-    if (!user) return;
+    const userMockData = mockUsers.find(u => u.id === userId);
+    if (!userMockData) return;
+
+     if(!user){
+      toast.warning("This is a preview");
+     }
+
 
     setSelectedUsers(prev => {
       const isSelected = prev.some(u => u.id === userId);
       if (isSelected) {
         return prev.filter(u => u.id !== userId);
       } else {
-        return [...prev, user];
+        return [...prev, userMockData];
       }
     });
   };
@@ -145,6 +152,14 @@ export default function Main() {
   const getSelectedEmails = () => {
     return selectedUsers.map(user => user.email);
   };
+
+  const handleAddingFriends = async () => {
+    if(!user){
+      toast.warning("You need to log in before adding friends");
+    }else{
+
+    }
+  }
 
   const handleLoginLogout = async () => {
     if (loading) {
@@ -165,7 +180,7 @@ export default function Main() {
       } catch (error) {
         console.error('Error signing in:', error);
       }
-      
+
     }
   }
 
@@ -194,12 +209,24 @@ export default function Main() {
                   </Button>
                 )}
 
-                <span className="h-fit bg-purple-500 text-white px-3 py-1 rounded-full text-sm w-fit">
-                  Li Jie
-                </span>
+                {user ? (
+                  <span className="h-fit bg-purple-500 text-white px-3 py-1 rounded-full text-sm w-fit">
+                    {user.user_metadata?.name}
+                  </span>
+                ) : (
+                  <Button className="h-fit bg-purple-500 text-white px-3 py-1 rounded-full text-sm w-fit"
+                    onClick={handleLoginLogout}>
+                    Login
+                  </Button>
+                )}
               </div>
-
-              <p className="text-gray-500 text-sm mb-4">lijiebiz@gmail.com</p>
+              {/* <div className="ml-auto w-2/3 truncate">
+                {user ? (
+                  <p className="text-gray-500 text-sm mb-4">{user.email}</p>
+                ) : (
+                  <p className="text-gray-500 text-sm mb-4"> Login </p>
+                )}
+              </div> */}
             </div>
           </div>
         </div>
@@ -221,6 +248,22 @@ export default function Main() {
             ))}
           </div>
         </div>
+        {!user && !loading && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg"
+          >
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-5 h-5 text-purple-600" />
+              <div>
+                <p className="text-sm font-medium text-purple-900">Preview Mode</p>
+                <p className="text-xs text-purple-700">Sign in to access your real data and all features</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* This Month Section */}
         <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
@@ -276,7 +319,7 @@ export default function Main() {
         </div> */}
 
         {/* Add Bill Cards - Horizontally Scrollable */}
-        <div className="overflow-x-auto pb-4 mb-8">
+        <div className="overflow-x-auto pb-6">
           <div className="flex space-x-4 min-w-max">
             {mockUsers.map((user, index) => {
               const isSelected = selectedUsers.some(u => u.id === user.id);
@@ -314,10 +357,16 @@ export default function Main() {
           </div>
         </div>
 
+        <Button className="h-fit w-fit bg-blue-400 border-1 border-blue-500 text-white font-bold rounded-3xl"
+        onClick={()=>{handleAddingFriends()}}>
+          <Plus />
+          Add Friends
+        </Button>
+
         {/* Display selected emails for debugging */}
         {selectedUsers.length > 0 && (
-          <div className="mb-4 p-3 bg-purple-50 rounded-lg">
-            <p className="text-sm font-medium text-purple-900 mb-1">Selected users:</p>
+          <div className="my-4 p-3 bg-purple-50 rounded-lg ">
+            <p className="text-sm font-medium text-purple-900 mb-1">Preview selected :</p>
             <p className="text-xs text-purple-700">{getSelectedEmails().join(', ')}</p>
           </div>
         )}
@@ -425,7 +474,7 @@ export default function Main() {
         selectedUsers={selectedUsers} // Pass the selected users here
       />
 
-      <div className="mb-12 py-12" />
+
 
       {/* Bottom Action Bar */}
       <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md border-t border-gray-100 p-4">
