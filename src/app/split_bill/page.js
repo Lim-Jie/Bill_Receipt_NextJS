@@ -38,6 +38,33 @@ export default function SplitBill() {
   }, []);
 
 
+  // Example: Direct client-side API call
+  async function callBackendDirectly(message, billData) {
+    try {
+      // Call your backend API directly
+      const response = await fetch('/api/backend/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: message,
+          input: billData
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error calling backend directly:', error);
+      throw error;
+    }
+  }
+
   const handleSubmit = async (e, directMessage = null) => {
     // Make preventDefault optional
     if (e && e.preventDefault) {
@@ -56,26 +83,8 @@ export default function SplitBill() {
     setError(null);
 
     try {
-      // Include bill data in the request if available
-      const requestBody = {
-        message: userMessage,
-        billData: billData // Pass the bill data to the API
-      };
+      const data = await callBackendDirectly(userMessage, billData)
 
-      console.log("Sending request with bill data:", requestBody);
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
       console.log("Response from API:", data);
       setResponse(data);
       setChatHistory(prev => [...prev, { type: 'assistant', content: data.response }]);
@@ -262,7 +271,7 @@ export default function SplitBill() {
               <button
                 type="submit"
                 disabled={loading || !message.trim()}
-                className="bg-purple-400 text-xs text-white px-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="bg-purple-600 text-xs text-white px-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Send
               </button>
@@ -329,7 +338,7 @@ export default function SplitBill() {
                                 {/* Left side - ID and Item Info */}
                                 <div className="flex items-center space-x-3">
                                   <div className="flex flex-row items-center px-2 py-1 bg-purple-500 text-white rounded-full text-xs font-bold flex-shrink-0 whitespace-nowrap">
-                                    ID: {itemIndex + 1}
+                                    ID: {item.id || 0}
                                   </div>
 
                                   <div className="flex flex-col">
@@ -451,13 +460,16 @@ export default function SplitBill() {
 
             {/* Billing Section */}
             <div className="px-6 py-4 overflow-y-auto max-h-[50vh]">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Billing</h3>
-                <div className="flex space-x-4 text-sm">
+              <div className="flex flex-col justify-between mb-4 gap-2">
+                <h3 className="text-2xl font-semibold text-gray-800">Billing confirmation</h3>
+                <p className='text-xs text-gray-500'>
+                  This will send an email notification requesting for the receipt split amount
+                </p>
+                {/* <div className="flex space-x-4 text-sm">
                   <span className="text-gray-400">Near By</span>
                   <span className="text-gray-800 font-medium border-b-2 border-gray-800">Recent</span>
                   <span className="text-gray-400">History</span>
-                </div>
+                </div> */}
               </div>
 
               {/* Horizontal Participant Cards Container */}
@@ -469,13 +481,13 @@ export default function SplitBill() {
 
                     return (
                       <div key={index} className="flex-shrink-0 w-80 snap-start">
-                        <div className={`bg-gray-800 border-gray-500/60 border-2 rounded-2xl p-4 shadow-lg h-full`}>
+                        <div className={`bg-white border-gray-200/60 border-1 rounded-2xl p-4 shadow-lg h-full`}>
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center space-x-3">
-                              <div className={`${colorScheme.accent} rounded-full p-2 relative`}>
+                              <div className={`bg-white outline-1 outline-gray-300 rounded-full p-2 relative`}>
                               </div>
                               <div>
-                                <h4 className="font-bold text-gray-200 text-lg flex items-center gap-2">
+                                <h4 className="font-bold text-gray-600 text-lg flex items-center gap-2">
                                   {participant.email.split('@')[0].toUpperCase()}
                                 </h4>
                                 <p className="text-xs text-gray-400">{participant.email}</p>
@@ -492,7 +504,7 @@ export default function SplitBill() {
 
                           {/* Bill Info */}
                           <div className="mb-3">
-                            <div className="text-2xl font-bold text-gray-100">
+                            <div className="text-2xl font-bold text-gray-800">
                               {formatCurrency(participant.total_paid)}
                             </div>
                           </div>
@@ -500,7 +512,7 @@ export default function SplitBill() {
                           {/* Action Buttons */}
                           <div className="flex space-x-2">
                             {paymentStatus === 'owner' ? (
-                              <div className="flex flex-row w-full justify-center items-center gap-3 bg-black text-white py-2 px-4 rounded-full text-center text-sm font-medium">
+                              <div className="flex flex-row w-full justify-center items-center gap-3 bg-white text-black outline-1 outline-gray-200 py-2 px-4 rounded-full text-center text-sm font-medium">
                                 <UserIcon className="w-4 h-4 fill-white" />
                                 <p>Bill Owner</p>
                               </div>
@@ -547,9 +559,9 @@ export default function SplitBill() {
               {/* Add Split Billing Button */}
               <button
                 onClick={handleConfirm}
-                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-4 px-6 rounded-2xl font-medium text-lg shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200"
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-2xl text-md shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200"
               >
-                Add Split Billing
+                Send notifications
               </button>
             </div>
           </div>

@@ -6,6 +6,69 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/auth-provider"
+import { toast } from "sonner"
+
+//TODO: dont hardcode the participants email
+const participants = [
+    { "name": "Alice", "email": "alice@example.com" },
+    { "name": "Bob", "email": "bob@example.com" }
+];
+
+
+// Example: Direct client-side API call
+async function analyzeReceipt(formData) {
+    try {
+
+        // Call your backend API directly
+        const response = await fetch('/api/backend/analyze-receipt', {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error calling backend directly:', error);
+        throw error;
+    }
+}
+
+const ProcessingCountdown = ({ isProcessing, onComplete }) => {
+    const [countdown, setCountdown] = useState(4);
+    //COUNTDOWN DEFAULT TO 4 SECONDS FROM FILE UPLOAD 
+    
+    useEffect(() => {
+        if (!isProcessing) {
+            setCountdown(5);
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setCountdown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    onComplete?.();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isProcessing, onComplete]);
+
+    if (!isProcessing) return null;
+
+    return (
+        <div>
+            Processing... {countdown}s
+        </div>
+    );
+};
 
 export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
     const [isUploading, setIsUploading] = useState(false)
@@ -14,28 +77,15 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
 
 
     const handleFileUpload = async (file) => {
-
         setIsUploading(true)
 
         try {
             const formData = new FormData()
             formData.append("file", file)
-
+            formData.append('participants', JSON.stringify(participants));
             console.log("Sending image to backend for processing...")
 
-            // Call your Next.js API route instead of the backend directly
-            const response = await fetch("/api/analyze-receipt", {
-                method: "POST",
-                body: formData,
-            })
-
-            if (!response.ok) {
-                const errorData = await response.json()
-                console.error("API route error:", errorData)
-                throw new Error(`API error: ${response.status} - ${errorData.error}`)
-            }
-
-            const data = await response.json()
+            const data = await analyzeReceipt(formData);
             console.log("Received data from API:", data)
 
             // Parse structured data
@@ -68,91 +118,9 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
 
             alert(`Failed to process receipt: ${error.message}. Using sample data instead.`)
 
-            // Use mock data with selected users
-            const mockData = {
-                raw_text: "Mock OCR text from receipt (backend unavailable)...",
-                structured_data: JSON.stringify({
-                    bill_id: "BILL20250606-001",
-                    name: "Italian Bistro @Hartamas",
-                    date: "2025-06-05",
-                    time: "14:01",
-                    category: "Food",
-                    tax_rate: 0.06,
-                    service_charge_rate: 0.1,
-                    subtotal_amount: 88.0,
-                    tax_amount: 5.28,
-                    service_charge_amount: 8.8,
-                    nett_amount: 102.08,
-                    paid_by: user.email,
-                    items: [
-                        {
-                            id: 1,
-                            name: "Pasta Carbonara",
-                            price: 18.0,
-                            tax_amount: 2.88,
-                            nett_price: 20.88,
-                            quantity: 1,
-                            consumed_by: [],
-                        },
-                        {
-                            id: 2,
-                            name: "Margherita Pizza",
-                            price: 15.0,
-                            tax_amount: 2.4,
-                            nett_price: 17.4,
-                            quantity: 1,
-                            consumed_by: [],
-                        },
-                        {
-                            id: 3,
-                            name: "Margherita Pizza",
-                            price: 15.0,
-                            tax_amount: 2.4,
-                            nett_price: 17.4,
-                            quantity: 1,
-                            consumed_by: [],
-                        },
-                        {
-                            id: 4,
-                            name: "Wine Bottle",
-                            price: 40.0,
-                            tax_amount: 6.4,
-                            nett_price: 46.4,
-                            quantity: 1,
-                            consumed_by: [],
-                        },
-                    ],
-                    split_method: "item_based",
-                    participants: [
-                        {
-                            email: user.email,
-                            total_paid: 102.08,
-                            items_paid: [
-                                { id: 1, percentage: 100, value: 20.88 },
-                                { id: 2, percentage: 100, value: 17.4 },
-                                { id: 3, percentage: 100, value: 17.4 },
-                                { id: 4, percentage: 100, value: 46.4 },
-                            ],
-                        },
-                        {
-                            email: "lijiebiz@gmail.com",
-                            total_paid: 0,
-                            items_paid: [],
-                        },
-                        {
-                            email: "charlie@gmail.com",
-                            total_paid: 0,
-                            items_paid: [],
-                        },
-                    ],
-                    notes: "Includes 10% service charge and 6% GST. Consumers to be assigned.",
-                }),
-                selected_users: selectedUsers
-            }
-
-            localStorage.setItem("receiptData", JSON.stringify(mockData))
             onClose()
-            router.push("/review")
+            // router.push("/review")
+            toast.warning("We couldn't capture your image data, please try again")
         } finally {
             setIsUploading(false)
         }
@@ -202,7 +170,7 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
                         <Receipt className="w-6 h-6 text-purple-500" />
                         Scan Receipt
                     </CardTitle>
-                    
+
                     <button
                         onClick={onClose}
                         className=" p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
@@ -221,6 +189,7 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
                             Our AI will automatically read your receipt and extract items, prices, and tax information.
                         </p>
                     </div>
+
                 </CardContent>
 
                 <CardFooter className="flex flex-col gap-3">
@@ -230,7 +199,9 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
                         className="w-full p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl"
                     >
                         <Camera className="w-5 h-5 mr-2" />
-                        {isUploading ? "Processing..." : "Take Photo"}
+                        {isUploading ?
+                            <ProcessingCountdown isProcessing={isUploading} onComplete={() => setIsUploading(false)} />
+                            : "Take Photo"}
                     </Button>
 
                     <Button

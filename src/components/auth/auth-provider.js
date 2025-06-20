@@ -3,6 +3,7 @@
 import React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
 
 const AuthContext = createContext({
   user: null,
@@ -30,30 +31,51 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    // Listen for auth changes
+    // Listen for auth changes (without showing toasts)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
       setLoading(false)
+      // Removed toast notifications from here
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    if (error) throw error
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (error) {
+        toast.error("Failed to sign in with Google")
+        throw error
+      }
+      // Show success toast immediately after successful OAuth initiation
+      toast.success("Redirecting to Google...")
+    } catch (error) {
+      toast.error("An error occurred during sign in")
+      throw error
+    }
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        toast.error("Failed to sign out")
+        throw error
+      }
+      // Show success toast immediately after successful sign out
+      toast.success("Logged out successfully!")
+    } catch (error) {
+      toast.error("An error occurred during sign out")
+      throw error
+    }
   }
 
   return (

@@ -1,10 +1,10 @@
 export async function POST(request) {
   try {
     const body = await request.json();
-    // Transform the request to match backend API format
+    
     const backendRequest = {
       message: body.message,
-      input: body.billData // Include bill data if available
+      input: body.billData
     };
     
     const response = await fetch(`${process.env.MAIN_BACKEND_API}/chat`, {
@@ -17,17 +17,26 @@ export async function POST(request) {
 
     if (!response.ok) {
       console.error(`Backend API error: ${response.status}`);
-      return Response.json(
-        { error: `HTTP error! status: ${response.status}` },
-        { status: response.status }
+      return new Response(
+        JSON.stringify({ error: `HTTP error! status: ${response.status}` }),
+        { 
+          status: response.status,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          }
+        }
       );
     }
 
     const data = await response.json();
     
-    return Response.json(data, {
+    return new Response(JSON.stringify(data), {
       status: 200,
       headers: {
+        'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
@@ -35,9 +44,17 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("API route error:", error);
-    return Response.json(
-      { error: error.message || 'Something went wrong' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: error.message || 'Something went wrong' }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
+      }
     );
   }
 }

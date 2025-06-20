@@ -6,7 +6,6 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Plus, Check, Users, Calendar, MapPin, Tag, ForkKnife, LogInIcon, LogIn, LogOut, Icon, HelpCircleIcon, ArrowRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
-import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Camera, Upload, Receipt, Sparkles } from "lucide-react"
 import FileUpload from "@/components/clientcomponents/fileUpload";
@@ -156,7 +155,6 @@ export default function Main() {
       // User is logged in, so log them out
       try {
         await signOut();
-        toast.success("Logged out successfully!");
       } catch (error) {
         console.error('Error signing out:', error);
       }
@@ -164,10 +162,10 @@ export default function Main() {
       // User is not logged in, so sign them in
       try {
         await signInWithGoogle();
-        toast.success("Logged in successfully!");
       } catch (error) {
         console.error('Error signing in:', error);
       }
+      
     }
   }
 
