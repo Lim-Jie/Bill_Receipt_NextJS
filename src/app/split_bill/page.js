@@ -1,7 +1,9 @@
 'use client';
 
-import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon } from 'lucide-react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState, useRef, useEffect } from 'react';
 
 export default function SplitBill() {
   const [message, setMessage] = useState('');
@@ -9,121 +11,64 @@ export default function SplitBill() {
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isListening, setIsListening] = useState(false);
   const [showBillModal, setShowBillModal] = useState(false);
   const [currentParticipantIndex, setCurrentParticipantIndex] = useState(0);
-  const [expandedCards, setExpandedCards] = useState({}); // Track which cards are expanded
-  const [participantPaymentStatus, setParticipantPaymentStatus] = useState({}); // Track payment status
-
-  const recognitionRef = useRef(null);
-
-  // Initialize speech recognition
-  // Initialize speech recognition
+  const [expandedCards, setExpandedCards] = useState({});
+  const [participantPaymentStatus, setParticipantPaymentStatus] = useState({});
+  const [billData, setBillData] = useState(null);
+  const router = useRouter();
+  // Add effect to load bill data from review page
   useEffect(() => {
-    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+    const storedData = localStorage.getItem("split_bill_receiptData");
 
-      // Updated settings for better continuous recording
-      recognitionRef.current.continuous = true; // Changed to true for continuous recording
-      recognitionRef.current.interimResults = true; // Changed to true to get partial results
-      recognitionRef.current.lang = 'en-US';
-      recognitionRef.current.maxAlternatives = 1;
+    if (storedData) {
+      const parsed = JSON.parse(storedData);
+      console.log("Receipt data received in split_bill:", parsed);
 
-      recognitionRef.current.onresult = (event) => {
-        let transcript = '';
-
-        // Get the final transcript from all results
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            transcript += event.results[i][0].transcript;
-          }
-        }
-
-        // Only update message when we have a final result
-        if (transcript.trim()) {
-          setMessage(prev => prev + ' ' + transcript);
-        }
+      // Format the data to match the expected response structure
+      const formattedResponse = {
+        response: "Bill data loaded successfully",
+        status: "success",
+        data: parsed.receiptData // This contains the structured data from review page
       };
 
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-
-        // Auto-restart on certain errors
-        if (event.error === 'no-speech' || event.error === 'audio-capture') {
-          setTimeout(() => {
-            if (isListening) {
-              startListening();
-            }
-          }, 1000);
-        }
-      };
-
-      recognitionRef.current.onend = () => {
-        // Don't automatically set listening to false - let user control it
-        if (isListening) {
-          // Restart recognition if user is still in listening mode
-          setTimeout(() => {
-            if (isListening && recognitionRef.current) {
-              try {
-                recognitionRef.current.start();
-              } catch (error) {
-                console.error('Error restarting recognition:', error);
-                setIsListening(false);
-              }
-            }
-          }, 100);
-        }
-      };
-
-      recognitionRef.current.onstart = () => {
-        console.log('Speech recognition started');
-      };
+      setResponse(formattedResponse);
+      setBillData(parsed.receiptData);
     }
-  }, [isListening, startListening]); // Added isListening as dependency
+  }, []);
 
-  const startListening = useCallback(() => {
-    if (recognitionRef.current && !isListening) {
-      try {
-        setIsListening(true);
-        recognitionRef.current.start();
-      } catch (error) {
-        console.error('Error starting recognition:', error);
-        setIsListening(false);
-      }
+
+  const handleSubmit = async (e, directMessage = null) => {
+    // Make preventDefault optional
+    if (e && e.preventDefault) {
+      e.preventDefault();
     }
-  }, []); // Add dependencies if the function uses any state/props
 
-  useEffect(() => {
-    startListening();
-  }, [startListening]);
+    // Use directMessage if provided, otherwise use the state message
+    const messageToProcess = directMessage || message;
 
-  const stopListening = () => {
-    if (recognitionRef.current && isListening) {
-      setIsListening(false);
-      recognitionRef.current.stop();
-    }
-  };
+    if (!messageToProcess.trim()) return;
 
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!message.trim()) return;
-
-    const userMessage = message.trim();
+    const userMessage = messageToProcess.trim();
     setChatHistory(prev => [...prev, { type: 'user', content: userMessage }]);
     setMessage('');
     setLoading(true);
     setError(null);
 
     try {
+      // Include bill data in the request if available
+      const requestBody = {
+        message: userMessage,
+        billData: billData // Pass the bill data to the API
+      };
+
+      console.log("Sending request with bill data:", requestBody);
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {
@@ -131,6 +76,7 @@ export default function SplitBill() {
       }
 
       const data = await res.json();
+      console.log("Response from API:", data);
       setResponse(data);
       setChatHistory(prev => [...prev, { type: 'assistant', content: data.response }]);
     } catch (err) {
@@ -202,7 +148,7 @@ export default function SplitBill() {
 
     console.log("Bill owner : ", response?.data?.paid_by)
     console.log("isBillOwner : ", participantEmail)
-    console.log("ISBillOwner? ",response?.data?.paid_by === participantEmail)
+    console.log("ISBillOwner? ", response?.data?.paid_by === participantEmail)
     return response?.data?.paid_by === participantEmail;
   };
 
@@ -214,24 +160,74 @@ export default function SplitBill() {
     return participantPaymentStatus[participantEmail] ? 'paid' : 'unpaid';
   };
 
+  // Function to handle quick messages
+  const handleQuickMessage = async (messageText) => {
+    // Set the message for UI display
+    setMessage(messageText.trim());
+    // Pass the message directly to handleSubmit
+    await handleSubmit(null, messageText.trim());
+  };
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col relative">
       {/* Header */}
-      <header className="bg-white shadow-sm px-4 py-3">
-        <h1 className="text-xl font-semibold text-gray-800 text-center">
-          Bill Splitter Chat
-        </h1>
-      </header>
+      <div className="bg-white/80 backdrop-blur-sm border-b border-purple-100 sticky top-0 z-10">
+        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => { router.back() }} className="text-purple-600">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <div className="w-16" />
+        </div>
+      </div>
+
 
       {/* Upper Half - Chat Section */}
       <div className="h-1/2 flex flex-col">
         {/* Chat History */}
         <div className="flex-1 px-4 py-4 bg-white space-y-3 overflow-y-auto">
+          {/* Add initial message if bill data is available */}
+          {billData && chatHistory.length === 0 && (
+            <div className="flex justify-start">
+              <div className="bg-white shadow-sm px-4 py-2 rounded-2xl text-gray-700 max-w-xs lg:max-w-md">
+                <p className="text-sm">
+                  I can see your bill from {billData.name}.
+                  Total amount: MYR {billData.nett_amount?.toFixed(2)}.
+                  How would you like to split this bill?
+                </p>
+
+                {/* Quick chat starters */}
+                <div className="mt-4 space-y-2">
+                  <button
+                    onClick={() => handleQuickMessage("Can you divide the bill equally?")}
+                    className="block w-full text-left p-3 bg-gray-50 hover:bg-blue-50 rounded-lg text-sm transition-colors"
+                  >
+                    💰 Can you divide the bill equally?
+                  </button>
+
+                  <button
+                    onClick={() => handleQuickMessage("Can you move all items from alice to bob?")}
+                    className="block w-full text-left p-3 bg-gray-50 hover:bg-blue-50 rounded-lg text-sm transition-colors"
+                  >
+                    📋 Can you move all items from alice to bob?
+                  </button>
+
+                  <button
+                    onClick={() => handleQuickMessage("Can you move item 1 from alice to bob?")}
+                    className="block w-full text-left p-3 bg-gray-50 hover:bg-blue-50 rounded-lg text-sm transition-colors"
+                  >
+                    🔄 Can you move item 1 from alice to bob?
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {chatHistory.map((chat, index) => (
             <div key={index} className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${chat.type === 'user'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white shadow-sm text-gray-700'
+              <div className={`max-w-xs lg:max-md px-4 py-2 rounded-2xl ${chat.type === 'user'
+                ? 'bg-purple-600 text-white'
+                : 'bg-white outline-purple-300 outline-2 text-gray-700'
                 }`}>
                 <p className="text-sm whitespace-pre-wrap">{chat.content}</p>
               </div>
@@ -254,39 +250,25 @@ export default function SplitBill() {
         {/* Chat Input */}
         <div className="bg-white px-4 py-4">
           <form onSubmit={handleSubmit} className="flex space-x-2">
-            <div className="flex-1 relative">
+            <div className="flex flex-row w-full gap-2">
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Message.."
-                className="w-full p-3 pr-12 bg-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                placeholder=" Message.."
+                className="w-5/6 p-3 bg-gray-50 outline-none rounded-2xl focus:border-transparent resize-none text-xs"
                 rows="1"
                 disabled={loading}
               />
               <button
-                type="button"
-                onClick={isListening ? stopListening : startListening}
-                className={`absolute right-2 top-2 p-2 rounded-full ${isListening ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'
-                  } hover:bg-opacity-80 transition-colors`}
+                type="submit"
+                disabled={loading || !message.trim()}
+                className="bg-purple-400 text-xs text-white px-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                </svg>
+                Send
               </button>
             </div>
-            <button
-              type="submit"
-              disabled={loading || !message.trim()}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Send
-            </button>
+
           </form>
-          {isListening && (
-            <div className="mt-2 text-center text-sm text-red-600">
-              🎤 Listening... Speak now
-            </div>
-          )}
         </div>
       </div>
 
@@ -297,6 +279,7 @@ export default function SplitBill() {
             {/* Participants and Items */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
               {response.data.participants.map((participant, index) => {
+                console.log("participant", participant)
                 const isExpanded = expandedCards[index];
                 const itemsToShow = isExpanded ? participant.items_paid : participant.items_paid.slice(0, 2);
                 const hasMoreItems = participant.items_paid.length > 2;
@@ -308,7 +291,7 @@ export default function SplitBill() {
                       {/* Header */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center space-x-3">
-                          <div className={`bg-black rounded-full p-2 relative`}>
+                          <div className={`bg-white outline-1 outline-gray-300 rounded-full p-2 relative`}>
                           </div>
                           <div>
                             <h4 className="font-bold text-gray-800 text-lg flex items-center gap-2">
@@ -318,7 +301,7 @@ export default function SplitBill() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-gray-800">
+                          <div className="text-xl font-bold text-gray-800">
                             {formatCurrency(participant.total_paid)}
                           </div>
                         </div>
@@ -329,15 +312,15 @@ export default function SplitBill() {
                         <div className="space-y-2">
                           {itemsToShow.map((item, itemIndex) => {
                             const billItem = response.data.items.find(i => i.id === item.id);
-
+                            console.log("Item", item)
                             return (
                               <div
                                 key={itemIndex}
                                 className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 transition-all duration-300 ease-in-out transform ${isExpanded && itemIndex >= 2
-                                    ? 'opacity-100 translate-y-0'
-                                    : itemIndex >= 2
-                                      ? 'opacity-0 -translate-y-2'
-                                      : 'opacity-100 translate-y-0'
+                                  ? 'opacity-100 translate-y-0'
+                                  : itemIndex >= 2
+                                    ? 'opacity-0 -translate-y-2'
+                                    : 'opacity-100 translate-y-0'
                                   }`}
                                 style={{
                                   transitionDelay: isExpanded && itemIndex >= 2 ? `${(itemIndex - 2) * 100}ms` : '0ms'
@@ -350,7 +333,7 @@ export default function SplitBill() {
                                   </div>
 
                                   <div className="flex flex-col">
-                                    <span className="text-gray-800 font-medium text-base">
+                                    <span className="text-gray-800 font-medium text-xs">
                                       {billItem?.name || `Item ${item.id}`}
                                     </span>
                                     <div className="text-gray-500 text-sm">
@@ -405,11 +388,10 @@ export default function SplitBill() {
                         ) : (
                           <button
                             onClick={() => togglePaymentStatus(participant.email)}
-                            className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${
-                              paymentStatus === 'paid'
-                                ? 'bg-white border border-gray-200 text-black'
-                                : 'bg-black text-white'
-                            }`}
+                            className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${paymentStatus === 'paid'
+                              ? 'bg-white border border-gray-200 text-black'
+                              : 'bg-black text-white'
+                              }`}
                           >
                             {paymentStatus === 'paid' ? (
                               <>
@@ -525,11 +507,10 @@ export default function SplitBill() {
                             ) : (
                               <button
                                 onClick={() => togglePaymentStatus(participant.email)}
-                                className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${
-                                  paymentStatus === 'paid'
-                                    ? 'bg-white border border-gray-100 text-black'
-                                    : 'bg-black text-white'
-                                }`}
+                                className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${paymentStatus === 'paid'
+                                  ? 'bg-white border border-gray-100 text-black'
+                                  : 'bg-black text-white'
+                                  }`}
                               >
                                 {paymentStatus === 'paid' ? (
                                   <>

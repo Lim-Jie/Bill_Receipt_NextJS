@@ -342,37 +342,39 @@ export default function Main() {
                     : 'border-gray-100'
                     }`}
                 >
-                  {/* Header with Venue and Total Cost */}
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <div className="rounded-lg flex p-1">
-                          <ForkKnife className="w-4 h-4 text-purple-500 stroke-2 fill-purple-300" />
+                  <div className="flex flex-col w-full">
+                    {/* Header with Venue and Total Cost */}
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <div className="rounded-lg flex p-1">
+                            <ForkKnife className="w-4 h-4 text-purple-500 stroke-2 fill-purple-300" />
+                          </div>
+                          <h4 className="text-gray-900 text-base font-medium">{transaction.venue}</h4>
                         </div>
-                        <h4 className="text-gray-900 text-base font-medium">{transaction.venue}</h4>
                       </div>
 
-                      {/* Details Row - Fixed Layout */}
-                      <div className="flex items-center justify-between text-sm text-gray-600 mt-2">
-                        <div className="flex items-center space-x-6">
-                          <div className="flex flex-col items-center mt-3">
-                            <span className="text-xs">{formatDate(transaction.date)}</span>
+                      <div className="text-right flex items-center space-x-3">
+                        <div className="flex flex-col gap-3">
+                          <div className="flex text-xl font-bold text-gray-700 ml-auto">
+                            {formatCurrency(transaction.totalCost)}
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="text-right flex items-center space-x-3">
-                      <div className="flex flex-col gap-3">
-                        <div className="flex text-xl font-bold text-gray-700 ml-auto">
-                          {formatCurrency(transaction.totalCost)}
-                        </div>
-                        <div className="flex flex-row items-center gap-2 text-md">
-                          <span className="">Paid</span>
-                          <span className=" font-semibold text-purple-400">
-                            MYR 89.40
-                          </span>
-                        </div>
+                    </div>
+                    {/* TODO: Dont hardcode total bill price*/}
+                    {/* Details Row - Fixed Layout */}
+                    <div className="flex flex-row w-full items-center space-x-6 mt-3 justify-between">
+                      <div className="flex items-center">
+                        <span className="text-xs">{formatDate(transaction.date)}</span>
+                      </div>
+
+                      <div className="flex flex-row items-center gap-2 text-xs">
+                        <span className="">Total</span>
+                        <span className=" font-semibold text-purple-400">
+                          MYR 89.40
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -419,8 +421,8 @@ export default function Main() {
       </div>
 
       {/* Uploading and taking camera picture of the receipt  */}
-      <FileUpload 
-        isOpen={isFileUploadOpen} 
+      <FileUpload
+        isOpen={isFileUploadOpen}
         onClose={() => setIsFileUploadOpen(false)}
         selectedUsers={selectedUsers} // Pass the selected users here
       />
@@ -428,8 +430,12 @@ export default function Main() {
       <div className="mb-12 py-12" />
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 p-4">
-        <div className="flex items-center justify-between">
+      <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md border-t border-gray-100 p-4">
+        {/* Semi-transparent background */}
+        <div className="absolute inset-0 bg-white opacity-70"></div>
+
+        {/* Content with full opacity */}
+        <div className="relative flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {selectedTransactions.length > 0 && (
               <div className="flex items-center space-x-2">

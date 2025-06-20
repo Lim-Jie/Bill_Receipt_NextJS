@@ -89,14 +89,19 @@ export default function ReviewPage() {
     const data = localStorage.getItem("receiptData")
     if (data) {
       const parsed = JSON.parse(data)
+      console.log("Raw receipt data from localStorage:", parsed)
+      
       try {
         const structured = JSON.parse(parsed.structured_data)
         setReceiptData(structured)
         setItems(structured.items || [])
-        setSelectedUsers(parsed.selected_users || []) // Get selected users from stored data
+        setSelectedUsers(parsed.selected_users || [])
+        console.log("Selected users:", parsed.selected_users)
       } catch (error) {
         console.error("Error parsing structured data:", error)
       }
+    } else {
+      console.log("No receipt data found in localStorage")
     }
     setIsLoading(false)
   }, [])
@@ -104,7 +109,12 @@ export default function ReviewPage() {
   const handleContinue = () => {
     // Make sure billData is using the most recent receiptData
     if (receiptData) {
-      localStorage.setItem("billData", JSON.stringify(receiptData))
+      console.log("Passing bill data to split_bill:", receiptData)
+
+      localStorage.setItem("split_bill_receiptData", JSON.stringify({
+       receiptData
+      }))
+      
       console.log("Updated billData with latest receipt data")
     }
     router.push("/split_bill")
