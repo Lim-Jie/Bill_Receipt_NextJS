@@ -1,9 +1,12 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon, ArrowLeft } from 'lucide-react';
+import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon, ArrowLeft, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useAuth } from '@/components/auth/auth-provider';
+import LoginCard from '@/components/clientcomponents/loginCard';
 
 export default function SplitBill() {
   const [message, setMessage] = useState('');
@@ -17,6 +20,9 @@ export default function SplitBill() {
   const [participantPaymentStatus, setParticipantPaymentStatus] = useState({});
   const [billData, setBillData] = useState(null);
   const router = useRouter();
+  const { user } = useAuth();
+  const [isLoginCardOpen, setIsLoginCardOpen] = useState(false);
+
   // Add effect to load bill data from review page
   useEffect(() => {
     const storedData = localStorage.getItem("split_bill_receiptData");
@@ -177,6 +183,15 @@ export default function SplitBill() {
     await handleSubmit(null, messageText.trim());
   };
 
+  const handleConfirmationPopUp = () => {
+    if (user) {
+      setShowBillModal(true)
+    } else {
+      setIsLoginCardOpen(true);
+      toast.warning("Please login to continue this action")
+    }
+  }
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col relative">
       {/* Header */}
@@ -264,7 +279,7 @@ export default function SplitBill() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder=" Message.."
-                className="w-5/6 p-3 bg-gray-50 outline-none rounded-2xl focus:border-transparent resize-none text-xs"
+                className="w-5/6 p-3 bg-gray-100/80 outline-none rounded-2xl focus:border-transparent resize-none text-xs"
                 rows="1"
                 disabled={loading}
               />
@@ -278,6 +293,15 @@ export default function SplitBill() {
             </div>
 
           </form>
+          {/* <button
+            // disabled={loading || !message.trim()}
+            className="bg-blue-600 text-xs text-white px-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <div className='flex flex-row items-center gap-1 text-xs'>
+              <Plus width={16} height={16} /> friends
+            </div>
+          </button> */}
+
         </div>
       </div>
 
@@ -425,7 +449,7 @@ export default function SplitBill() {
             {/* View Bill Button */}
             <div className="px-4 py-3">
               <button
-                onClick={() => setShowBillModal(true)}
+                onClick={handleConfirmationPopUp}
                 className="w-full rounded-3xl bg-purple-600 text-white py-3 px-4 font-medium hover:bg-purple-700 transition-colors"
               >
                 View Bill Details
@@ -441,6 +465,12 @@ export default function SplitBill() {
           </div>
         )}
       </div>
+
+      {/* Add LoginCard at the end, before closing div */}
+      <LoginCard 
+        isOpen={isLoginCardOpen} 
+        onClose={() => setIsLoginCardOpen(false)} 
+      />
 
       {/* Bottom Slide-up Modal */}
       {showBillModal && response?.data && (
@@ -459,7 +489,7 @@ export default function SplitBill() {
             </div>
 
             {/* Billing Section */}
-            <div className="px-6 py-4 overflow-y-auto max-h-[50vh]">
+            <div className="px-6 py-4 overflow-y-auto">
               <div className="flex flex-col justify-between mb-4 gap-2">
                 <h3 className="text-2xl font-semibold text-gray-800">Billing confirmation</h3>
                 <p className='text-xs text-gray-500'>

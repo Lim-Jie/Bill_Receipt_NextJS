@@ -9,18 +9,25 @@ import { useAuth } from "@/components/auth/auth-provider"
 import { toast } from "sonner"
 
 //TODO: dont hardcode the participants email
-const participants = [
-    { "name": "Alice", "email": "alice@example.com" },
-    { "name": "Bob", "email": "bob@example.com" }
-];
+// const participants = [
+//     { "name": "Alice", "email": "alice@example.com" },
+//     { "name": "Bob", "email": "bob@example.com" }
+// ];
 
 
 // Example: Direct client-side API call
-async function analyzeReceipt(formData) {
+async function analyzeReceipt(file, participants, email) {
     try {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append('participants', JSON.stringify(participants));
+        formData.append("email", email)
 
+        console.log("participants: ", JSON.stringify(participants))
         // Call your backend API directly
         const response = await fetch('/api/backend/analyze-receipt', {
+        // const response = await fetch(`/api/development/analyze-receipt`, {
+        //FOR DEVELOPMENT
             method: "POST",
             body: formData,
         });
@@ -79,12 +86,11 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
         setIsUploading(true)
 
         try {
-            const formData = new FormData()
-            formData.append("file", file)
-            formData.append('participants', JSON.stringify(participants));
-            console.log("Sending image to backend for processing...")
+            //GET USER EMAIL ELSE IF RETURN NULL WHEN USER IS NOT LOGGED IN
+            const email = user?.email || "";
 
-            const data = await analyzeReceipt(formData);
+            //GET THE JSON RETRIEVED FROM SCANNIGN THE RECEIPT
+            const data = await analyzeReceipt(file, selectedUsers, email);
             console.log("Received data from API:", data)
 
             // Parse structured data

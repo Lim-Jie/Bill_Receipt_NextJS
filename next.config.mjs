@@ -6,6 +6,10 @@ const nextConfig = {
         source: '/api/backend/:path*',
         destination: `${process.env.NEXT_PUBLIC_BACKEND_API}/:path*`,
       },
+      {
+        source: '/api/development/:path*',
+        destination: 'http://localhost:8000/:path*',
+      },
     ];
   },
 };
