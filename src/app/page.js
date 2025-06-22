@@ -18,21 +18,26 @@ const MOCK_RECEIPTS = [
     name: 'Dinner at Italian Restaurant',
     nett_amount: 85.50,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // Yesterday
-    paid_by: 'john@example.com'
+    paid_by: 'john@example.com',
+    total_paid: 10.00
   },
   {
     id: 'preview-2',
     name: 'Grocery Shopping',
     nett_amount: 124.75,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
-    paid_by: 'You'
+    paid_by: 'You',
+    total_paid: 34.60
+
   },
   {
     id: 'preview-3',
     name: 'Coffee & Breakfast',
     nett_amount: 32.20,
     created_at: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), // 3 days ago
-    paid_by: 'sarah@example.com'
+    paid_by: 'sarah@example.com',
+    total_paid: 9.60
+
   }
 ];
 
@@ -413,7 +418,7 @@ export default function Main() {
   }, []);
 
   useEffect(() => {
-    if (selectedUsers.length === 0 && user  && !authLoading) {
+    if (selectedUsers.length === 0 && user && !authLoading) {
       const form = {
         id: user.id,
         name: user.user_metadata?.name || user.email.split("@")[0],
@@ -672,8 +677,8 @@ export default function Main() {
       </div>
 
       {/* Your Transactions Section - Add smooth transition */}
-      <div className="px-4 mb-20 bg-white">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Your transactions</h3>
+      <div className="px-4 pb-[90px] bg-white">
+        <h3 className="text-xl font-bold text-gray-900 mb-4 ">Your transactions</h3>
 
         {(user && initialDataLoading) ? (
           <div className="space-y-3">
@@ -728,17 +733,18 @@ export default function Main() {
 
                       <div className="text-right flex items-center space-x-3">
                         <div className="flex flex-col gap-3">
-                          <div className="flex text-xl font-bold text-gray-700 ml-auto">
-                            {formatCurrency(receipt.nett_amount)}
+                          <div className="flex text-xl font-bold text-purple-400 ml-auto">
+                            {user ? (
+                                formatCurrency(receipt.participants.find(p => p.email === user.email)?.total_paid || 0)
+                            ):(
+                             formatCurrency(receipt.total_paid || 0)
+                            )}
                           </div>
-                          <div className="flex flex-row items-center gap-2 text-md">
-                            <span className="">Paid by</span>
-                            <span className=" font-semibold text-purple-400">
-                              {user ? (
-                                receipt.paid_by === user.email ? "You" : (receipt.paid_by?.split("@")[0] || "Unknown")
-                              ) : (
-                                receipt.paid_by === 'You' ? 'You' : receipt.paid_by?.split("@")[0]
-                              )}
+                          <div className="flex flex-row items-center gap-2 text-xs">
+                            <span className="">Total :</span>
+                            <span className=" font-semibold">
+                              {formatCurrency(receipt.nett_amount)}
+
                             </span>
                           </div>
                         </div>
@@ -790,16 +796,6 @@ export default function Main() {
       <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            {selectedTransactions.length > 0 && (
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-blue-400 rounded flex items-center justify-center">
-                  <Check className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-gray-600">
-                  {selectedTransactions.length} transactions
-                </span>
-              </div>
-            )}
             {selectedUsers.length > 0 && (
               <div className="flex items-center space-x-2">
                 <div className="w-6 h-6 bg-purple-400 rounded flex items-center justify-center">

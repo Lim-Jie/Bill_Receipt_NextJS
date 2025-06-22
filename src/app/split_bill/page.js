@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/auth-provider';
 import LoginCard from '@/components/clientcomponents/loginCard';
+import TestPage from '@/test'
 
 export default function SplitBill() {
   const [message, setMessage] = useState('');
@@ -89,11 +90,21 @@ export default function SplitBill() {
     setError(null);
 
     try {
-      const data = await callBackendDirectly(userMessage, billData)
+      const result = await callBackendDirectly(userMessage, billData)
 
-      console.log("Response from API:", data);
-      setResponse(data);
-      setChatHistory(prev => [...prev, { type: 'assistant', content: data.response }]);
+      console.log("Response from API:", result);
+      setResponse(result);
+      setChatHistory(prev => [...prev, { type: 'assistant', content: result.response }]);
+      //Retain memory of previous chat requests on JSON
+      setBillData(billData);
+
+      // Fix: Stringify the billData before storing
+      localStorage.setItem("split_bill_receiptData", JSON.stringify({
+        receiptData: result.data
+      }))
+      console.log("Successfully saved to localStorage:", billData);
+
+
     } catch (err) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -138,10 +149,6 @@ export default function SplitBill() {
     }
   };
 
-  const handleConfirm = () => {
-    alert('Bill confirmed! Payment requests will be sent to all participants.');
-    setShowBillModal(false);
-  };
 
   const toggleCardExpansion = (participantIndex) => {
     setExpandedCards(prev => ({
@@ -467,9 +474,9 @@ export default function SplitBill() {
       </div>
 
       {/* Add LoginCard at the end, before closing div */}
-      <LoginCard 
-        isOpen={isLoginCardOpen} 
-        onClose={() => setIsLoginCardOpen(false)} 
+      <LoginCard
+        isOpen={isLoginCardOpen}
+        onClose={() => setIsLoginCardOpen(false)}
       />
 
       {/* Bottom Slide-up Modal */}
@@ -482,7 +489,7 @@ export default function SplitBill() {
           />
 
           {/* Modal */}
-          <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl animate-slide-up max-h-[85vh] overflow-hidden">
+          <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl animate-slide-up overflow-hidden">
             {/* Handle Bar */}
             <div className="flex justify-center pt-3 pb-2">
               <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
@@ -586,13 +593,7 @@ export default function SplitBill() {
                 </div>
               </div>
 
-              {/* Add Split Billing Button */}
-              <button
-                onClick={handleConfirm}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-2xl text-md shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200"
-              >
-                Send notifications
-              </button>
+              <TestPage />
             </div>
           </div>
         </>
