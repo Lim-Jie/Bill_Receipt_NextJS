@@ -334,14 +334,20 @@ export default function SplitBill() {
                           <div className={`bg-white outline-1 outline-gray-300 rounded-full p-2 relative`}>
                           </div>
                           <div>
-                            <h4 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-                              {participant.email.split('@')[0].toUpperCase()}
+                            <h4 className="font-bold text-gray-600 text-sm flex items-center gap-2">
+                              {participant.email.split('@')[0].slice(0, 10).toUpperCase()}
+                              {participant.email.split('@')[0].length > 10 ? '..' : ''}
                             </h4>
-                            <p className="text-xs text-gray-400">{participant.email}</p>
+                            
+                            <p className="text-xs text-gray-400">
+                              {participant.email.slice(0, 20)}
+                              {participant.email.split('@')[0].length > 20 ? '..' : ''}
+
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-xl font-bold text-gray-800">
+                          <div className="text-lg font-bold text-gray-800">
                             {formatCurrency(participant.total_paid)}
                           </div>
                         </div>
@@ -525,7 +531,8 @@ export default function SplitBill() {
                               </div>
                               <div>
                                 <h4 className="font-bold text-gray-600 text-lg flex items-center gap-2">
-                                  {participant.email.split('@')[0].toUpperCase()}
+                                  {participant.email.split('@')[0].slice(0, 16).toUpperCase()}
+                                  {participant.email.split('@')[0].length > 16 ? '...' : ''}
                                 </h4>
                                 <p className="text-xs text-gray-400">{participant.email}</p>
                               </div>
