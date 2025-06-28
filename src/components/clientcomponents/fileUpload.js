@@ -14,7 +14,6 @@ import { toast } from "sonner"
 //     { "name": "Bob", "email": "bob@example.com" }
 // ];
 
-
 // Example: Direct client-side API call
 async function analyzeReceipt(file, participants, email) {
     try {
@@ -26,8 +25,6 @@ async function analyzeReceipt(file, participants, email) {
         console.log("participants: ", JSON.stringify(participants))
         // Call your backend API directly
         const response = await fetch('/api/backend/analyze-receipt', {
-        // const response = await fetch(`/api/development/analyze-receipt`, {
-        //FOR DEVELOPMENT
             method: "POST",
             body: formData,
         });
@@ -81,7 +78,6 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
     const router = useRouter()
     const { user, loading } = useAuth()
 
-
     const handleFileUpload = async (file) => {
         setIsUploading(true)
 
@@ -116,8 +112,9 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
 
             localStorage.setItem("receiptData", JSON.stringify(receiptDataWrapper))
             console.log("Stored receipt data with selected users, navigating to review page")
-            onClose()
-            router.push("/review")
+            
+             router.push("/review")
+            
         } catch (error) {
             console.error("Error processing receipt:", error)
 
@@ -168,20 +165,14 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-md mx-auto bg-white">
+        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 transition-all duration-500 ease-in-out `}>
+            <Card className={`w-full max-w-md mx-auto bg-white transition-all duration-500 ease-in-out`}>
                 <CardHeader className="flex flex-row justify-between">
                     <CardTitle className="flex items-center gap-2 pr-12 justify-between">
                         <Receipt className="w-6 h-6 text-purple-500" />
                         Scan Receipt
                     </CardTitle>
 
-                    <button
-                        onClick={onClose}
-                        className=" p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
-                    >
-                        <X className="w-4 h-4 text-gray-500" />
-                    </button>
                 </CardHeader>
 
                 <CardContent className="space-y-4">
@@ -194,14 +185,13 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
                             Our AI will automatically read your receipt and extract items, prices, and tax information.
                         </p>
                     </div>
-
                 </CardContent>
 
                 <CardFooter className="flex flex-col gap-3">
                     <Button
                         onClick={handleCameraCapture}
-                        disabled={isUploading}
-                        className="w-full p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl"
+                        disabled={isUploading }
+                        className="w-full p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-50"
                     >
                         <Camera className="w-5 h-5 mr-2" />
                         {isUploading ?
@@ -211,9 +201,9 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
 
                     <Button
                         onClick={handleGallerySelect}
-                        disabled={isUploading}
+                        disabled={isUploading }
                         variant="outline"
-                        className="w-full p-4 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl"
+                        className="w-full p-4 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl disabled:opacity-50"
                     >
                         <Upload className="w-5 h-5 mr-2" />
                         Choose from Gallery

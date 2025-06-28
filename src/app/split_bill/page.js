@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon, ArrowLeft, Plus } from 'lucide-react';
+import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon, ArrowLeft, Plus, GripVertical } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -24,6 +24,10 @@ export default function SplitBill() {
   const { user } = useAuth();
   const [isLoginCardOpen, setIsLoginCardOpen] = useState(false);
 
+  // Drag and drop states
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragOverParticipant, setDragOverParticipant] = useState(null);
+
   // Add effect to load bill data from review page
   useEffect(() => {
     const storedData = localStorage.getItem("split_bill_receiptData");
@@ -44,6 +48,83 @@ export default function SplitBill() {
     }
   }, []);
 
+  // Drag and drop handlers
+  const handleDragStart = (e, item, fromParticipantIndex) => {
+    setDraggedItem({ item, fromParticipantIndex });
+    e.dataTransfer.effectAllowed = 'move';
+
+    // Add visual feedback
+    e.target.style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1';
+    setDraggedItem(null);
+    setDragOverParticipant(null);
+  };
+
+  const handleDragOver = (e, participantIndex) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverParticipant(participantIndex);
+  };
+
+  const handleDragLeave = (e) => {
+    // Only clear if we're leaving the participant card entirely
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOverParticipant(null);
+    }
+  };
+
+  const handleDrop = (e, toParticipantIndex) => {
+    e.preventDefault();
+    setDragOverParticipant(null);
+
+    if (!draggedItem || draggedItem.fromParticipantIndex === toParticipantIndex) {
+      return; // Can't drop on same participant or no item being dragged
+    }
+
+    // Create a copy of the current response data
+    const updatedResponse = { ...response };
+    const participants = [...updatedResponse.data.participants];
+
+    const fromParticipant = participants[draggedItem.fromParticipantIndex];
+    const toParticipant = participants[toParticipantIndex];
+
+    // Remove item from source participant
+    const itemIndex = fromParticipant.items_paid.findIndex(item =>
+      item.id === draggedItem.item.id
+    );
+
+    if (itemIndex === -1) return;
+
+    const [movedItem] = fromParticipant.items_paid.splice(itemIndex, 1);
+
+    // Add item to target participant
+    toParticipant.items_paid.push(movedItem);
+
+    // Recalculate totals
+    fromParticipant.total_paid = fromParticipant.items_paid.reduce((sum, item) => sum + item.value, 0);
+    toParticipant.total_paid = toParticipant.items_paid.reduce((sum, item) => sum + item.value, 0);
+
+    // Update the response state
+    updatedResponse.data.participants = participants;
+    setResponse(updatedResponse);
+
+    // Update localStorage
+    localStorage.setItem("split_bill_receiptData", JSON.stringify({
+      receiptData: updatedResponse.data
+    }));
+
+    // Show success message
+    const fromName = fromParticipant.email.split('@')[0];
+    const toName = toParticipant.email.split('@')[0];
+    const itemName = updatedResponse.data.items.find(i => i.id === movedItem.id)?.name || `Item ${movedItem.id}`;
+
+    toast.success(`Moved "${itemName}" from ${fromName} to ${toName}`);
+
+    setDraggedItem(null);
+  };
 
   // Example: Direct client-side API call
   async function callBackendDirectly(message, billData) {
@@ -96,7 +177,7 @@ export default function SplitBill() {
       setResponse(result);
       setChatHistory(prev => [...prev, { type: 'assistant', content: result.response }]);
       //Retain memory of previous chat requests on JSON
-      setBillData(billData);
+      setBillData(result?.data || null);
 
       // Fix: Stringify the billData before storing
       localStorage.setItem("split_bill_receiptData", JSON.stringify({
@@ -149,7 +230,6 @@ export default function SplitBill() {
     }
   };
 
-
   const toggleCardExpansion = (participantIndex) => {
     setExpandedCards(prev => ({
       ...prev,
@@ -167,7 +247,6 @@ export default function SplitBill() {
 
   // Function to check if participant is bill owner
   const isBillOwner = (participantEmail) => {
-
     console.log("Bill owner : ", response?.data?.paid_by)
     console.log("isBillOwner : ", participantEmail)
     console.log("ISBillOwner? ", response?.data?.paid_by === participantEmail)
@@ -199,6 +278,59 @@ export default function SplitBill() {
     }
   }
 
+  // Add this helper function before the return statement
+  const generateMoveItemPrompt = () => {
+    if (!billData?.participants || billData.participants.length === 0) {
+      return "Can you move item 1?";
+    }
+
+    const usernames = billData.participants.map(p => p.email.split('@')[0]);
+
+    if (usernames.length === 1) {
+      // Single user - same person
+      return `Move item 1 from ${usernames[0]} to ${usernames[0]}`;
+    } else {
+      // Multiple users - pick random from and to
+      // const fromUser = usernames[Math.floor(Math.random() * usernames.length)];
+
+      const fromUser = usernames[0];
+      let toUser = usernames[Math.floor(Math.random() * usernames.length)];
+      // Ensure from and to are different if possible
+      if (usernames.length > 1 && fromUser === toUser) {
+        toUser = usernames.find(u => u !== fromUser) || usernames[0];
+      }
+
+      return `Move item 1 from ${fromUser} to ${toUser}`;
+    }
+  };
+
+  // Add this helper function before the return statement
+  const generateMoveAllItemsPrompt = () => {
+    if (!billData?.participants || billData.participants.length === 0) {
+      return "Can you move item all items?";
+    }
+
+    const usernames = billData.participants.map(p => p.email.split('@')[0]);
+
+    if (usernames.length === 1) {
+      // Single user - same person
+      return `Move all items from ${usernames[0]} to ${usernames[0]}`;
+    } else {
+      // Multiple users - pick random from and to
+      // const fromUser = usernames[Math.floor(Math.random() * usernames.length)];
+
+      const fromUser = usernames[0];
+      let toUser = usernames[Math.floor(Math.random() * usernames.length)];
+
+      // Ensure from and to are different if possible
+      if (usernames.length > 1 && fromUser === toUser) {
+        toUser = usernames.find(u => u !== fromUser) || usernames[0];
+      }
+
+      return `Move all items from ${fromUser} to ${toUser}`;
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col relative">
       {/* Header */}
@@ -211,7 +343,6 @@ export default function SplitBill() {
           <div className="w-16" />
         </div>
       </div>
-
 
       {/* Upper Half - Chat Section */}
       <div className="h-1/2 flex flex-col">
@@ -237,17 +368,18 @@ export default function SplitBill() {
                   </button>
 
                   <button
-                    onClick={() => handleQuickMessage("Can you move all items from alice to bob?")}
+                    onClick={() => handleQuickMessage(generateMoveAllItemsPrompt())}
                     className="block w-full text-left p-3 bg-gray-50 hover:bg-blue-50 rounded-lg text-sm transition-colors"
                   >
-                    📋 Can you move all items from alice to bob?
+                    📋 {generateMoveAllItemsPrompt()}
                   </button>
 
+
                   <button
-                    onClick={() => handleQuickMessage("Can you move item 1 from alice to bob?")}
+                    onClick={() => handleQuickMessage(generateMoveItemPrompt())}
                     className="block w-full text-left p-3 bg-gray-50 hover:bg-blue-50 rounded-lg text-sm transition-colors"
                   >
-                    🔄 Can you move item 1 from alice to bob?
+                    🔄 {generateMoveItemPrompt()}
                   </button>
                 </div>
               </div>
@@ -286,7 +418,7 @@ export default function SplitBill() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder=" Message.."
-                className="w-5/6 p-3 bg-gray-100/80 outline-none rounded-2xl focus:border-transparent resize-none text-xs"
+                className="w-5/6 p-3 bg-gray-100/80 outline-none rounded-2xl focus:border-transparent resize-none text-base" // Changed from text-xs to text-base
                 rows="1"
                 disabled={loading}
               />
@@ -298,17 +430,7 @@ export default function SplitBill() {
                 Send
               </button>
             </div>
-
           </form>
-          {/* <button
-            // disabled={loading || !message.trim()}
-            className="bg-blue-600 text-xs text-white px-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <div className='flex flex-row items-center gap-1 text-xs'>
-              <Plus width={16} height={16} /> friends
-            </div>
-          </button> */}
-
         </div>
       </div>
 
@@ -324,10 +446,18 @@ export default function SplitBill() {
                 const itemsToShow = isExpanded ? participant.items_paid : participant.items_paid.slice(0, 2);
                 const hasMoreItems = participant.items_paid.length > 2;
                 const paymentStatus = getPaymentStatus(participant.email);
+                const isDragOver = dragOverParticipant === index;
 
                 return (
-                  <div key={index} className="rounded-lg p-4">
-                    <div className={`bg-white border-gray-100/60 border-2 rounded-2xl p-4 shadow-lg h-full transition-all duration-300 ease-in-out`}>
+                  <div
+                    key={index}
+                    className="rounded-lg p-4"
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, index)}
+                  >
+                    <div className={`bg-white border-gray-100/60 border-2 rounded-2xl p-4 shadow-lg h-full transition-all duration-300 ease-in-out ${isDragOver ? 'border-purple-400 bg-purple-50' : ''
+                      }`}>
                       {/* Header */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center space-x-3">
@@ -338,11 +468,10 @@ export default function SplitBill() {
                               {participant.email.split('@')[0].slice(0, 10).toUpperCase()}
                               {participant.email.split('@')[0].length > 10 ? '..' : ''}
                             </h4>
-                            
+
                             <p className="text-xs text-gray-400">
                               {participant.email.slice(0, 20)}
                               {participant.email.split('@')[0].length > 20 ? '..' : ''}
-
                             </p>
                           </div>
                         </div>
@@ -353,6 +482,13 @@ export default function SplitBill() {
                         </div>
                       </div>
 
+                      {/* Drop Zone Indicator */}
+                      {isDragOver && (
+                        <div className="mb-3 p-3 border-2 border-dashed border-purple-400 rounded-xl bg-purple-100 text-center">
+                          <p className="text-purple-600 font-medium">Drop item here to move it to {participant.email.split('@')[0]}</p>
+                        </div>
+                      )}
+
                       {/* Items List with Animation */}
                       <div className="mb-3">
                         <div className="space-y-2">
@@ -362,7 +498,10 @@ export default function SplitBill() {
                             return (
                               <div
                                 key={itemIndex}
-                                className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 transition-all duration-300 ease-in-out transform ${isExpanded && itemIndex >= 2
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, item, index)}
+                                onDragEnd={handleDragEnd}
+                                className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 transition-all duration-300 ease-in-out transform cursor-move hover:shadow-md ${isExpanded && itemIndex >= 2
                                   ? 'opacity-100 translate-y-0'
                                   : itemIndex >= 2
                                     ? 'opacity-0 -translate-y-2'
@@ -372,8 +511,10 @@ export default function SplitBill() {
                                   transitionDelay: isExpanded && itemIndex >= 2 ? `${(itemIndex - 2) * 100}ms` : '0ms'
                                 }}
                               >
-                                {/* Left side - ID and Item Info */}
+                                {/* Left side - Drag Handle, ID and Item Info */}
                                 <div className="flex items-center space-x-3">
+                                  <GripVertical className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+
                                   <div className="flex flex-row items-center px-2 py-1 bg-purple-500 text-white rounded-full text-xs font-bold flex-shrink-0 whitespace-nowrap">
                                     ID: {item.id || 0}
                                   </div>
@@ -508,11 +649,6 @@ export default function SplitBill() {
                 <p className='text-xs text-gray-500'>
                   This will send an email notification requesting for the receipt split amount
                 </p>
-                {/* <div className="flex space-x-4 text-sm">
-                  <span className="text-gray-400">Near By</span>
-                  <span className="text-gray-800 font-medium border-b-2 border-gray-800">Recent</span>
-                  <span className="text-gray-400">History</span>
-                </div> */}
               </div>
 
               {/* Horizontal Participant Cards Container */}

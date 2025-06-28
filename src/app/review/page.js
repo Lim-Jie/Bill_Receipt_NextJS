@@ -81,11 +81,19 @@ const getTimeOfDayInfo = (timeStr) => {
 export default function ReviewPage() {
   const [receiptData, setReceiptData] = useState(null)
   const [items, setItems] = useState([])
-  const [selectedUsers, setSelectedUsers] = useState([]) // Add this state
+  const [selectedUsers, setSelectedUsers] = useState([])
+  const [isAnimated, setIsAnimated] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  const [animationKey, setAnimationKey] = useState(Date.now()) // Add unique key
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Force fresh animation state with unique key
+    setAnimationKey(Date.now())
+    setIsAnimated(false)
+    setIsMounted(true)
+    
     const data = localStorage.getItem("receiptData")
     if (data) {
       const parsed = JSON.parse(data)
@@ -104,10 +112,31 @@ export default function ReviewPage() {
       console.log("No receipt data found in localStorage")
     }
     setIsLoading(false)
-  }, [])
+    
+    // Use longer timeout to ensure smooth animation
+    const animationTimer = setTimeout(() => {
+      setIsAnimated(true)
+    }, 150)
+
+    return () => clearTimeout(animationTimer)
+  }, []) // Empty dependency array ensures this runs on every mount
+
+  // Force component refresh when route changes
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setIsAnimated(false)
+      setAnimationKey(Date.now())
+    }
+
+    // Listen for route changes
+    router.events?.on('routeChangeComplete', handleRouteChange)
+    
+    return () => {
+      router.events?.off('routeChangeComplete', handleRouteChange)
+    }
+  }, [router])
 
   const handleContinue = () => {
-    // Make sure billData is using the most recent receiptData
     if (receiptData) {
       console.log("Passing bill data to split_bill:", receiptData)
 
@@ -120,7 +149,7 @@ export default function ReviewPage() {
     router.push("/split_bill")
   }
 
-  if (isLoading || !receiptData) {
+  if (isLoading || !receiptData || !isMounted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
@@ -132,11 +161,16 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="min-h-screen ">
+    <div 
+      key={animationKey} // Force re-render with unique key
+      className={`min-h-screen transition-transform duration-[1200ms] ease-out ${
+        isAnimated ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-purple-100 sticky top-0 z-10">
         <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-purple-600">
+          <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="text-purple-600">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
@@ -241,6 +275,10 @@ export default function ReviewPage() {
             <div className="flex justify-between">
               <span className="text-gray-600">Service Charge</span>
               <span>MYR {receiptData.service_charge_amount?.toFixed(2) || "0.00"}</span>
+            </div>
+             <div className="flex justify-between">
+              <span className="text-gray-600">Rounding adj</span>
+              <span>MYR {receiptData.rounding_adj?.toFixed(2) || "0.00"}</span>
             </div>
             <div className="border-t pt-2 flex justify-between font-semibold text-lg">
               <span>Total</span>
