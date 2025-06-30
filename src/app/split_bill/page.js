@@ -1,9 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { CheckIcon, Edit, Edit2Icon, EditIcon, SlashIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon, ArrowLeft, Plus, GripVertical } from 'lucide-react';
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, UserIcon, ListTodoIcon, ArrowLeft, GripVertical, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, use } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/auth-provider';
 import LoginCard from '@/components/clientcomponents/loginCard';
@@ -23,7 +23,7 @@ export default function SplitBill() {
   const router = useRouter();
   const { user } = useAuth();
   const [isLoginCardOpen, setIsLoginCardOpen] = useState(false);
-
+  const [erorrDifference, setErrorDifference] = useState(0);
   // Drag and drop states
   const [draggedItem, setDraggedItem] = useState(null);
   const [dragOverParticipant, setDragOverParticipant] = useState(null);
@@ -178,6 +178,7 @@ export default function SplitBill() {
       setChatHistory(prev => [...prev, { type: 'assistant', content: result.response }]);
       //Retain memory of previous chat requests on JSON
       setBillData(result?.data || null);
+      setErrorDifference(result?.difference)
 
       // Fix: Stringify the billData before storing
       localStorage.setItem("split_bill_receiptData", JSON.stringify({
@@ -600,6 +601,19 @@ export default function SplitBill() {
               })}
             </div>
 
+            <div className='flex flex-row justify-center'>
+              {erorrDifference === 0 ? (
+              <span className='flex flex-row w-fit gap-2 items-center p-2 rounded-lg text-xs text-gray-500'>
+                <CheckIcon width={16} height={16} className='stroke-green-400'/> Bill is split correctly
+              </span>
+            ) : (
+              <span className='flex flex-row w-fit gap-2 items-center p-2 rounded-lg text-xs text-gray-500'>
+                <X width={16} height={16} className='stroke-red-400'/> Bill has error difference : RM {erorrDifference}
+              </span>
+
+            )}
+              </div>
+
             {/* View Bill Button */}
             <div className="px-4 py-3">
               <button
@@ -748,6 +762,8 @@ export default function SplitBill() {
           <p className="text-red-700 text-sm">{error}</p>
         </div>
       )}
+
+
 
       <style jsx>{`
         @keyframes slide-up {
