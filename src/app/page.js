@@ -157,7 +157,7 @@ export default function Main() {
       categoryMap[category].value += receipt.nett_amount || 0;
     });
 
-    const colors = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'];
+    const colors = ['#c496fc', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'];
     const expenseCategories = Object.values(categoryMap).map((category, index) => ({
       ...category,
       color: colors[index % colors.length]
@@ -547,10 +547,16 @@ export default function Main() {
                       outerRadius={60}
                       fill="#D1D5DB"
                       dataKey="value"
-                      stroke="none"
+                      stroke="#000000"
+                      strokeWidth={1}
                     >
                       {displayExpenseData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color} 
+                          stroke="#9035ff" 
+                          strokeWidth={2}
+                        />
                       ))}
                     </Pie>
                   </PieChart>

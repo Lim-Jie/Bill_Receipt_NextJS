@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, Edit3, Users, Sun, Sunset, Moon, CloudSun } from "lucide-react"
+import { ArrowLeft, Edit3, Users, Sun, Sunset, Moon, CloudSun, Stars, CameraIcon, Camera, CameraOff, SwitchCamera, Check, ScanIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -87,38 +87,65 @@ export default function ReviewPage() {
   const [animationKey, setAnimationKey] = useState(Date.now()) // Add unique key
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
-
+  const [calculatedDifference, setCalculatedDifference] = useState(0);
   useEffect(() => {
-    // Force fresh animation state with unique key
-    setAnimationKey(Date.now())
-    setIsAnimated(false)
-    setIsMounted(true)
-    
-    const data = localStorage.getItem("receiptData")
-    if (data) {
-      const parsed = JSON.parse(data)
-      console.log("Raw receipt data from localStorage:", parsed)
-      
-      try {
-        const structured = JSON.parse(parsed.structured_data)
-        setReceiptData(structured)
-        setItems(structured.items || [])
-        setSelectedUsers(parsed.selected_users || [])
-        console.log("Selected users:", parsed.selected_users)
-      } catch (error) {
-        console.error("Error parsing structured data:", error)
-      }
-    } else {
-      console.log("No receipt data found in localStorage")
-    }
-    setIsLoading(false)
-    
-    // Use longer timeout to ensure smooth animation
-    const animationTimer = setTimeout(() => {
-      setIsAnimated(true)
-    }, 150)
+    const evaluateBillNettPrice = (structured) => {
+      // Calculate difference using the structured data directly
+      const items = structured.items;
+      const itemsNettPrice = items.reduce((sum, item) => {
+        return sum + (item.nett_price * item.quantity);
+      }, 0)
+      //The rounding_adj is already assigned to the first item in the bill
+      const difference = Number((itemsNettPrice - structured.nett_amount).toFixed(2));
 
-    return () => clearTimeout(animationTimer)
+      if (difference !== 0) {
+        console.log("THE BILL IS NOT CORRECTLY SPLIT")
+        console.log("Calculated itemsNettPrice", itemsNettPrice)
+      } else {
+        console.log("THE BILL IS CORRECTLY SPLIT")
+      }
+
+      return difference; // Return the difference value
+    }
+
+    const loadData = async () => {
+      // Force fresh animation state with unique key
+      setAnimationKey(Date.now())
+      setIsAnimated(false)
+      setIsMounted(true)
+
+      const data = localStorage.getItem("receiptData")
+      if (data) {
+        const parsed = JSON.parse(data)
+        console.log("Raw receipt data from localStorage:", parsed)
+
+        try {
+          const structured = JSON.parse(parsed.structured_data)
+          setReceiptData(structured)
+          setItems(structured.items || [])
+          setSelectedUsers(parsed.selected_users || [])
+          console.log("Selected users:", parsed.selected_users)
+
+          // Calculate the difference and set it
+          const differenceOfNettPrice = evaluateBillNettPrice(structured);
+          setCalculatedDifference(differenceOfNettPrice)
+        } catch (error) {
+          console.error("Error parsing structured data:", error)
+        }
+      } else {
+        console.log("No receipt data found in localStorage")
+      }
+      setIsLoading(false)
+
+      // Use longer timeout to ensure smooth animation
+      const animationTimer = setTimeout(() => {
+        setIsAnimated(true)
+      }, 150)
+
+      return () => clearTimeout(animationTimer)
+    }
+
+    loadData();
   }, []) // Empty dependency array ensures this runs on every mount
 
   // Force component refresh when route changes
@@ -130,7 +157,7 @@ export default function ReviewPage() {
 
     // Listen for route changes
     router.events?.on('routeChangeComplete', handleRouteChange)
-    
+
     return () => {
       router.events?.off('routeChangeComplete', handleRouteChange)
     }
@@ -141,9 +168,9 @@ export default function ReviewPage() {
       console.log("Passing bill data to split_bill:", receiptData)
 
       localStorage.setItem("split_bill_receiptData", JSON.stringify({
-       receiptData
+        receiptData
       }))
-      
+
       console.log("Updated billData with latest receipt data")
     }
     router.push("/split_bill")
@@ -161,11 +188,10 @@ export default function ReviewPage() {
   }
 
   return (
-    <div 
+    <div
       key={animationKey} // Force re-render with unique key
-      className={`min-h-screen transition-transform duration-[1200ms] ease-out ${
-        isAnimated ? 'translate-x-0' : '-translate-x-full'
-      }`}
+      className={`min-h-screen transition-transform duration-[1200ms] ease-out ${isAnimated ? 'translate-x-0' : '-translate-x-full'
+        }`}
     >
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-purple-100 sticky top-0 z-10">
@@ -178,7 +204,7 @@ export default function ReviewPage() {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-4 py-2.5 space-y-4">
+      <div className="max-w-md mx-auto px-4 py-2.5 space-y-2">
         {/* Items List */}
         <Card className="p-4 bg-white/80 shadow-none border-0 shadow-md mt-5">
           <div className="flex flex-col space-y-2">
@@ -207,17 +233,25 @@ export default function ReviewPage() {
                   );
                 })()}
               </div>
+
+
             </div>
 
             {/* Selected Users Section - Add this after the edit button */}
             {selectedUsers.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <h3 className="text-sm font-medium text-gray-600">Split with {selectedUsers.length} : </h3>
+                <div className="flex justify-between items-center gap-2 mb-3">
+                  {
+                    selectedUsers.length === 1 ? (
+                      <h3 className="text-xs font-medium text-gray-600">1 Friend added  : </h3>
+                    ) : (
+                      <h3 className="text-xs font-medium text-gray-600">{selectedUsers.length} Friends added  : </h3>
+                    )
+                  }
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedUsers.map((user, index) => (
-                    <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-700">
+                    <Badge key={index} variant="secondary" className="py-1  rounded-2xl outline-1 outline-gray-200/60 bg-white  shadow-md">
                       {user.name}
                     </Badge>
                   ))}
@@ -235,23 +269,40 @@ export default function ReviewPage() {
           </div>
           <div className="space-y-3">
             {items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50/60 rounded-lg outline-1 outline-gray-200/60">
-                <div className="flex flex-row w-2/3 gap-2">
-                  <p className="flex flex-row text-xs text-white bg-purple-500 w-fit h-fit px-2 py-1 rounded-lg shrink-0">x {item.quantity}</p>
-                  <p className="font-medium text-blue-900">{item.name}</p>
+              <div key={item.id} className="flex flex-col">
+                <div className="flex items-center justify-between p-3 bg-gray-50/60 rounded-lg outline-1 outline-gray-200/60">
+                  <div className="flex flex-row w-2/3 gap-2">
+                    <p className="flex flex-row text-xs text-white bg-purple-500 w-fit h-fit px-2 py-1 rounded-lg shrink-0">x {item.quantity}</p>
+                    <p className="font-medium text-blue-900">{item.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="flex flex-row font-semibold text-gray-900 shrink-0">MYR {item.nett_price.toFixed(2)}</p>
+                    {item.price !== item.nett_price && (
+                      <p className="text-xs text-purple-400/80 line-through">Pre-tax: <br /> MYR {item.price.toFixed(2)}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="flex flex-row font-semibold text-gray-900 shrink-0">MYR {item.nett_price.toFixed(2)}</p>
-                  {item.price !== item.nett_price && (
-                    <p className="text-xs text-purple-400/80 line-through">Pre-tax: <br /> MYR {item.price.toFixed(2)}</p>
+
+                <div className="flex flex-col text-xs text-gray-400 gap-0.5 mt-[10px]">
+                  {item.rounding_adj && (
+                    <span>
+                      Incl Rounding Adj: RM{item.rounding_adj}
+                    </span>
+                  )}
+                  {item.error_diff && (
+                    <span>
+                      Unbilled offset (tax split): RM{item.error_diff}
+                    </span>
                   )}
                 </div>
               </div>
+
+
             ))}
 
             <div className="flex flex-row justify-between items-center">
               <h3 className="text-xs text-gray-500">{items.length} items found</h3>
-             
+
               <Button onClick={() => router.push("/edit")}
                 className="bg-inherit shadow-none text-purple-600 text-xs">
                 Edit bill
@@ -276,7 +327,7 @@ export default function ReviewPage() {
               <span className="text-gray-600">Service Charge</span>
               <span>MYR {receiptData.service_charge_amount?.toFixed(2) || "0.00"}</span>
             </div>
-             <div className="flex justify-between">
+            <div className="flex justify-between">
               <span className="text-gray-600">Rounding adj</span>
               <span>MYR {receiptData.rounding_adj?.toFixed(2) || "0.00"}</span>
             </div>
@@ -287,6 +338,34 @@ export default function ReviewPage() {
           </div>
         </div>
 
+        <div className="flex flex-row gap-4 items-center mb-5">
+          <span className={`rounded-2xl px-2.5 py-1.5 text-xs font-medium ${calculatedDifference === 0
+            ? 'bg-green-100 text-green-800 border border-green-200'
+            : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+            }`}>
+            {calculatedDifference === 0 ? (
+              <>
+                <Check className="w-3 h-3 mr-1 inline" /> Bill is accurate
+              </>
+            ) : (
+              <>
+                Error difference = RM{calculatedDifference?.toFixed(2) || "0.00"}
+              </>
+            )}
+          </span>
+
+
+          <span className={` outline-1 flex flex-row font-bold items-center gap-1 text-gray-700 rounded-2xl px-2.5 py-1.5 text-xs w-fit ${(() => {
+            const confidence = receiptData.confidence_score?.toFixed(2) * 100 || 0;
+            if (confidence >= 80) return 'bg-white-300 outline-gray-300';
+            if (confidence >= 50) return 'bg-yellow-300 outline-yellow-300';
+            return 'bg-orange-300 outline-orange-300';
+          })()
+            }`}>
+            <ScanIcon width={13} height={13} />
+            {receiptData.confidence_score?.toFixed(2) * 100 || "0.00"}%
+          </span>
+        </div>
         {/* Continue Button */}
         <Button
           onClick={handleContinue}
