@@ -79,14 +79,14 @@ export function generateBillSplitEmail(
           <p><strong>${senderName}</strong> has split a bill with you from <strong>${billName}</strong>.</p>
           
           <div class="amount">
-            Your share: $${userAmount.toFixed(2)}
+            Your share: RM${userAmount.toFixed(2)}
           </div>
           
           <div class="summary">
             <h3>📋 Bill Summary</h3>
             <p><strong>Restaurant:</strong> ${billName}</p>
-            <p><strong>Total Bill:</strong> $${totalAmount.toFixed(2)}</p>
-            <p><strong>Your Share:</strong> $${userAmount.toFixed(2)}</p>
+            <p><strong>Total Bill:</strong> RM${totalAmount.toFixed(2)}</p>
+            <p><strong>Your Share:</strong> RM${userAmount.toFixed(2)}</p>
           </div>
           
           ${

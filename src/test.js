@@ -90,11 +90,6 @@ export default function TestPage() {
                 throw error
             }
 
-            console.log("✅ Receipt inserted successfully")
-
-            // Save invited emails
-            console.log("📧 Processing invited emails...")
-
             const emailsToSave = billData.participants
                 .filter((participants) => {
                     console.log(`🔍 Checking split email: ${participants.email} vs user email: ${user.email}`)
@@ -183,7 +178,7 @@ export default function TestPage() {
                     // Send the email
                     await sendEmail({
                         to: participant.email,
-                        subject: `Bill Split: ${billData.name || "Restaurant Bill"} - Your share: $${(participant.amount || 0).toFixed(2)}`,
+                        subject: `Bill Split: ${billData.name || "Restaurant Bill"} - Your share: RM${(participant.total_paid || 0).toFixed(2)}`,
                         html: emailHtml
                     })
 
@@ -210,32 +205,6 @@ export default function TestPage() {
         }
     }
 
-    // const copyShareLink = () => {
-    //     console.log("📋 copyShareLink called")
-    //     console.log("📊 SplitData for sharing:", splitData)
-
-    //     // Handle both data structures
-    //     const participants = splitData?.splits || splitData?.participants || []
-
-    //     const shareText = `Bill Split Summary for ${splitData?.name}\n\n${participants
-    //         .map((participant) => {
-    //             // Handle different data structures
-    //             const name = participant.nickname || participant.name || participant.email
-    //             const amount = participant.amount || participant.total_paid || 0
-    //             return `${name}: $${amount.toFixed(2)}`
-    //         })
-    //         .join("\n")}\n\nTotal: $${(splitData?.nett_amount || 0).toFixed(2)}`
-
-    //     console.log("📋 Share text generated:", shareText)
-
-    //     navigator.clipboard.writeText(shareText)
-    //     console.log("✅ Text copied to clipboard")
-
-    //     toast({
-    //         title: "Copied to clipboard!",
-    //         description: "Share this summary with your friends.",
-    //     })
-    // }
 
     console.log("🎨 Rendering component with splitData:", billData)
 
@@ -251,136 +220,10 @@ export default function TestPage() {
         )
     }
 
-    // Check if we have participants or splits data
-    const participants = billData.participants || []
-
-    // if (participants.length === 0) {
-    //     console.log("❌ No participants found in splitData")
-    //     return (
-    //         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    //             <div className="text-center p-4">
-    //                 <p className="text-gray-600 font-medium mb-4">No split data found</p>
-    //                 <Button onClick={startNewSplit} className="bg-black text-white">
-    //                     Start New Split
-    //                 </Button>
-    //             </div>
-    //         </div>
-    //     )
-    // }
-
 
     return (
         <div className=" bg-gray-50">
-            {/* Header */}
-            {/* <div className="bg-white border-b border-gray-200">
-                <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                            console.log("⬅️ Back button clicked")
-                            router.back()
-                        }}
-                        className="text-gray-600"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back
-                    </Button>
-                    <h1 className="font-semibold text-gray-900">Bill Summary</h1>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                            console.log("📋 Copy button clicked")
-                            //   copyShareLink()
-                        }}
-                        className="text-gray-600"
-                    >
-                        <Copy className="w-4 h-4" />
-                    </Button>
-                </div>
-            </div> */}
-
             <div className="max-w-md mx-auto p-4 space-y-4">
-                {/* Success Header */}
-                {/* <Card className="p-6 bg-black text-white border-0 shadow-sm text-center">
-                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Check className="w-8 h-8" />
-                    </div>
-                    <h2 className="text-xl font-semibold mb-2">Bill Split Complete!</h2>
-                    <p className="opacity-90">Your bill has been successfully divided</p>
-                </Card>
-                //Restaurant info
-                <Card className="p-4 bg-white border-0 shadow-sm">
-                    <h3 className="font-semibold text-gray-900 mb-2">{splitData.name || "Unknown Restaurant"}</h3>
-                    <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Total Amount</span>
-                        <span className="text-2xl font-bold text-gray-900">
-                            ${(splitData.nett_amount || 0).toFixed(2)}
-                        </span>
-                    </div>
-                </Card> */}
-
-                {/* Individual Splits */}
-                {/* <div className="space-y-3">
-          <h3 className="font-semibold text-gray-900">Individual Amounts</h3>
-          {participants.map((participant, index) => {
-            console.log(`🧾 Rendering participant ${index}:`, participant)
-            
-            // Handle different data structures
-            const email = participant.email || `participant-${index}`
-            const name = participant.nickname || participant.name || participant.email || "Unknown"
-            const amount = participant.amount || participant.total_paid || 0
-            const items = participant.items || participant.items_paid || []
-            
-            return (
-              <Card key={email} className="p-4 bg-white border-0 shadow-sm">
-                <div className="flex justify-between items-center mb-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{name}</p>
-                    <p className="text-sm text-gray-600">{email}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-gray-900">${amount.toFixed(2)}</p>
-                    <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700">
-                      {items.length} items
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  {items.map((item, itemIndex) => {
-                    console.log(`📦 Item ${itemIndex} for participant ${index}:`, item)
-                    
-                    // Handle different item structures
-                    let itemName = "Unknown item"
-                    let itemPrice = 0
-                    
-                    if (item.name) {
-                      // Standard item structure
-                      itemName = item.name
-                      itemPrice = item.nett_price || item.price || 0
-                    } else if (item.id) {
-                      // items_paid structure - find the item in splitData.items
-                      const fullItem = splitData.items?.find(i => i.id === item.id)
-                      if (fullItem) {
-                        itemName = fullItem.name
-                        itemPrice = item.value || fullItem.nett_price || fullItem.price || 0
-                      }
-                    }
-                    
-                    return (
-                      <div key={itemIndex} className="flex justify-between text-sm text-gray-600">
-                        <span>{itemName}</span>
-                        <span>${itemPrice.toFixed(2)}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </Card>
-            )
-          })}
-        </div> */}
 
                 {/* Action Buttons */}
                 <div className="space-y-3 pt-4">

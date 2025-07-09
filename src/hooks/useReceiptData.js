@@ -67,6 +67,7 @@ export function useReceiptData(selectedPeriod) {
             try {
                 setLoading(true);
 
+                // TODO: Do pagination  
                 // Get all receipts for the user without date filtering
                 const { data: receiptsData, error: receiptsError } = await supabase
                     .from("receipts")

@@ -178,7 +178,17 @@ export default function SplitBill() {
       setChatHistory(prev => [...prev, { type: 'assistant', content: result.response }]);
       //Retain memory of previous chat requests on JSON
       setBillData(result?.data || null);
-      setErrorDifference(result?.difference)
+
+      // coerce undefined/null to 0
+      const rawDiff = typeof result?.difference === 'number'
+        ? result.difference
+        : 0;
+
+      // round to 2 decimals and convert back to Number
+      const rounded = Number(rawDiff.toFixed(2));
+
+      // now store as a Number
+      setErrorDifference(rounded);
 
       // Fix: Stringify the billData before storing
       localStorage.setItem("split_bill_receiptData", JSON.stringify({
