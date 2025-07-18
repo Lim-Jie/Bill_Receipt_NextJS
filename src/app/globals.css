@@ -144,3 +144,149 @@
   width: 0px;
   background: transparent;
 }
+
+/* ...existing code... */
+
+.receipt-card-container {
+  position: relative;
+  margin: 20px 0;
+}
+
+.receipt-card-modern {
+  position: relative;
+  background: white;
+  border: none;
+  border-radius: 0;
+  padding: 24px;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transform: translateY(0);
+  transition: all 0.3s ease;
+  overflow: visible;
+  margin: 16px 0;
+}
+
+.receipt-card-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Top torn edge - more pronounced zigzag */
+.receipt-card-modern::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: white;
+  clip-path: polygon(
+    0% 100%,
+    3% 0%,
+    6% 100%,
+    9% 0%,
+    12% 100%,
+    15% 0%,
+    18% 100%,
+    21% 0%,
+    24% 100%,
+    27% 0%,
+    30% 100%,
+    33% 0%,
+    36% 100%,
+    39% 0%,
+    42% 100%,
+    45% 0%,
+    48% 100%,
+    51% 0%,
+    54% 100%,
+    57% 0%,
+    60% 100%,
+    63% 0%,
+    66% 100%,
+    69% 0%,
+    72% 100%,
+    75% 0%,
+    78% 100%,
+    81% 0%,
+    84% 100%,
+    87% 0%,
+    90% 100%,
+    93% 0%,
+    96% 100%,
+    100% 0%,
+    100% 100%
+  );
+  box-shadow: 
+    0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Bottom torn edge - more pronounced zigzag */
+.receipt-card-modern::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: white;
+  clip-path: polygon(
+    0% 0%,
+    3% 100%,
+    6% 0%,
+    9% 100%,
+    12% 0%,
+    15% 100%,
+    18% 0%,
+    21% 100%,
+    24% 0%,
+    27% 100%,
+    30% 0%,
+    33% 100%,
+    36% 0%,
+    39% 100%,
+    42% 0%,
+    45% 100%,
+    48% 0%,
+    51% 100%,
+    54% 0%,
+    57% 100%,
+    60% 0%,
+    63% 100%,
+    66% 0%,
+    69% 100%,
+    72% 0%,
+    75% 100%,
+    78% 0%,
+    81% 100%,
+    84% 0%,
+    87% 100%,
+    90% 0%,
+    93% 100%,
+    96% 0%,
+    100% 100%,
+    100% 0%
+  );
+  box-shadow: 
+    0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+.receipt-card-modern:hover::before,
+.receipt-card-modern:hover::after {
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Alternative darker torn edges */
+.receipt-card-dark {
+  background: #2d3748;
+  color: white;
+}
+
+.receipt-card-dark::before,
+.receipt-card-dark::after {
+  background: #2d3748;
+}

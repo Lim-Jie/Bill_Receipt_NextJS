@@ -30,7 +30,7 @@ export default function SplitBill() {
 
   // Add effect to load bill data from review page
   useEffect(() => {
-    const storedData = localStorage.getItem("split_bill_receiptData");
+    const storedData = localStorage.getItem("jomsplit_uploadReceiptData");
 
     if (storedData) {
       const parsed = JSON.parse(storedData);
@@ -112,13 +112,13 @@ export default function SplitBill() {
     setResponse(updatedResponse);
 
     // Update localStorage
-    localStorage.setItem("split_bill_receiptData", JSON.stringify({
+    localStorage.setItem("jomsplit_uploadReceiptData", JSON.stringify({
       receiptData: updatedResponse.data
     }));
 
-    // Show success message
-    const fromName = fromParticipant.email.split('@')[0];
-    const toName = toParticipant.email.split('@')[0];
+    // Show success message using name instead of email
+    const fromName = fromParticipant.name || fromParticipant.phone;
+    const toName = toParticipant.name || toParticipant.phone;
     const itemName = updatedResponse.data.items.find(i => i.id === movedItem.id)?.name || `Item ${movedItem.id}`;
 
     toast.success(`Moved "${itemName}" from ${fromName} to ${toName}`);
@@ -191,7 +191,7 @@ export default function SplitBill() {
       setErrorDifference(rounded);
 
       // Fix: Stringify the billData before storing
-      localStorage.setItem("split_bill_receiptData", JSON.stringify({
+      localStorage.setItem("jomsplit_uploadReceiptData", JSON.stringify({
         receiptData: result.data
       }))
       console.log("Successfully saved to localStorage:", billData);
@@ -248,28 +248,28 @@ export default function SplitBill() {
     }));
   };
 
-  // Function to toggle payment status
-  const togglePaymentStatus = (participantEmail) => {
+  // Function to toggle payment status - now using phone as identifier
+  const togglePaymentStatus = (participantPhone) => {
     setParticipantPaymentStatus(prev => ({
       ...prev,
-      [participantEmail]: !prev[participantEmail]
+      [participantPhone]: !prev[participantPhone]
     }));
   };
 
-  // Function to check if participant is bill owner
-  const isBillOwner = (participantEmail) => {
+  // Function to check if participant is bill owner - now using phone
+  const isBillOwner = (participantPhone) => {
     console.log("Bill owner : ", response?.data?.paid_by)
-    console.log("isBillOwner : ", participantEmail)
-    console.log("ISBillOwner? ", response?.data?.paid_by === participantEmail)
-    return response?.data?.paid_by === participantEmail;
+    console.log("isBillOwner : ", participantPhone)
+    console.log("ISBillOwner? ", response?.data?.paid_by === participantPhone)
+    return response?.data?.paid_by === participantPhone;
   };
 
-  // Function to get payment status
-  const getPaymentStatus = (participantEmail) => {
-    if (isBillOwner(participantEmail)) {
+  // Function to get payment status - now using phone
+  const getPaymentStatus = (participantPhone) => {
+    if (isBillOwner(participantPhone)) {
       return 'owner';
     }
-    return participantPaymentStatus[participantEmail] ? 'paid' : 'unpaid';
+    return participantPaymentStatus[participantPhone] ? 'paid' : 'unpaid';
   };
 
   // Function to handle quick messages
@@ -295,15 +295,13 @@ export default function SplitBill() {
       return "Can you move item 1?";
     }
 
-    const usernames = billData.participants.map(p => p.email.split('@')[0]);
+    const usernames = billData.participants.map(p => p.name || p.phone);
 
     if (usernames.length === 1) {
       // Single user - same person
       return `Move item 1 from ${usernames[0]} to ${usernames[0]}`;
     } else {
       // Multiple users - pick random from and to
-      // const fromUser = usernames[Math.floor(Math.random() * usernames.length)];
-
       const fromUser = usernames[0];
       let toUser = usernames[Math.floor(Math.random() * usernames.length)];
       // Ensure from and to are different if possible
@@ -321,15 +319,13 @@ export default function SplitBill() {
       return "Can you move item all items?";
     }
 
-    const usernames = billData.participants.map(p => p.email.split('@')[0]);
+    const usernames = billData.participants.map(p => p.name || p.phone);
 
     if (usernames.length === 1) {
       // Single user - same person
       return `Move all items from ${usernames[0]} to ${usernames[0]}`;
     } else {
       // Multiple users - pick random from and to
-      // const fromUser = usernames[Math.floor(Math.random() * usernames.length)];
-
       const fromUser = usernames[0];
       let toUser = usernames[Math.floor(Math.random() * usernames.length)];
 
@@ -456,7 +452,7 @@ export default function SplitBill() {
                 const isExpanded = expandedCards[index];
                 const itemsToShow = isExpanded ? participant.items_paid : participant.items_paid.slice(0, 2);
                 const hasMoreItems = participant.items_paid.length > 2;
-                const paymentStatus = getPaymentStatus(participant.email);
+                const paymentStatus = getPaymentStatus(participant.phone);
                 const isDragOver = dragOverParticipant === index;
 
                 return (
@@ -476,13 +472,13 @@ export default function SplitBill() {
                           </div>
                           <div>
                             <h4 className="font-bold text-gray-600 text-sm flex items-center gap-2">
-                              {participant.email.split('@')[0].slice(0, 10).toUpperCase()}
-                              {participant.email.split('@')[0].length > 10 ? '..' : ''}
+                              {(participant.name || participant.phone).slice(0, 15).toUpperCase()}
+                              {(participant.name || participant.phone).length > 15 ? '..' : ''}
                             </h4>
 
                             <p className="text-xs text-gray-400">
-                              {participant.email.slice(0, 20)}
-                              {participant.email.split('@')[0].length > 20 ? '..' : ''}
+                              {participant.phone ? participant.phone.slice(0, 20) : 'No phone'}
+                              {participant.phone && participant.phone.length > 20 ? '..' : ''}
                             </p>
                           </div>
                         </div>
@@ -496,7 +492,7 @@ export default function SplitBill() {
                       {/* Drop Zone Indicator */}
                       {isDragOver && (
                         <div className="mb-3 p-3 border-2 border-dashed border-purple-400 rounded-xl bg-purple-100 text-center">
-                          <p className="text-purple-600 font-medium">Drop item here to move it to {participant.email.split('@')[0]}</p>
+                          <p className="text-purple-600 font-medium">Drop item here to move it to {participant.name || participant.phone}</p>
                         </div>
                       )}
 
@@ -585,7 +581,7 @@ export default function SplitBill() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => togglePaymentStatus(participant.email)}
+                            onClick={() => togglePaymentStatus(participant.phone)}
                             className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${paymentStatus === 'paid'
                               ? 'bg-white border border-gray-200 text-black'
                               : 'bg-black text-white'
@@ -671,7 +667,7 @@ export default function SplitBill() {
               <div className="flex flex-col justify-between mb-4 gap-2">
                 <h3 className="text-2xl font-semibold text-gray-800">Billing confirmation</h3>
                 <p className='text-xs text-gray-500'>
-                  This will send an email notification requesting for the receipt split amount
+                  This will send an SMS notification requesting for the receipt split amount
                 </p>
               </div>
 
@@ -680,7 +676,7 @@ export default function SplitBill() {
                 <div className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide snap-x snap-mandatory">
                   {response.data.participants.map((participant, index) => {
                     const colorScheme = getRandomColor();
-                    const paymentStatus = getPaymentStatus(participant.email);
+                    const paymentStatus = getPaymentStatus(participant.phone);
 
                     return (
                       <div key={index} className="flex-shrink-0 w-80 snap-start">
@@ -691,10 +687,10 @@ export default function SplitBill() {
                               </div>
                               <div>
                                 <h4 className="font-bold text-gray-600 text-lg flex items-center gap-2">
-                                  {participant.email.split('@')[0].slice(0, 16).toUpperCase()}
-                                  {participant.email.split('@')[0].length > 16 ? '...' : ''}
+                                  {(participant.name || participant.phone).slice(0, 16).toUpperCase()}
+                                  {(participant.name || participant.phone).length > 16 ? '...' : ''}
                                 </h4>
-                                <p className="text-xs text-gray-400">{participant.email}</p>
+                                <p className="text-xs text-gray-400">{participant.phone}</p>
                               </div>
                             </div>
                             <div className="text-right">
@@ -722,7 +718,7 @@ export default function SplitBill() {
                               </div>
                             ) : (
                               <button
-                                onClick={() => togglePaymentStatus(participant.email)}
+                                onClick={() => togglePaymentStatus(participant.phone)}
                                 className={`flex flex-row w-full justify-center items-center gap-3 py-2 px-4 rounded-full text-center text-sm font-medium transition-all duration-200 ${paymentStatus === 'paid'
                                   ? 'bg-white border border-gray-100 text-black'
                                   : 'bg-black text-white'

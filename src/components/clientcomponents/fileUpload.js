@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Camera, Upload, Users, Receipt, Sparkles, X } from "lucide-react"
+import { Camera, Upload, Users, Receipt, Sparkles, X, GalleryVerticalIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth/auth-provider"
+import { getUserPhoneNumber, useAuth } from "@/components/auth/auth-provider"
 import { toast } from "sonner"
+import { supabase } from "@/lib/supabase"
 
 //TODO: dont hardcode the participants email
 // const participants = [
@@ -15,12 +16,12 @@ import { toast } from "sonner"
 // ];
 
 // Example: Direct client-side API call
-async function analyzeReceipt(file, participants, email) {
+async function analyzeReceipt(file, participants, phoneNumber) {
     try {
         const formData = new FormData()
         formData.append("file", file)
         formData.append('participants', JSON.stringify(participants));
-        formData.append("email", email)
+        formData.append("phoneNumber", phoneNumber)
 
         console.log("participants: ", JSON.stringify(participants))
         // Call your backend API directly
@@ -78,15 +79,20 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
     const router = useRouter()
     const { user, loading } = useAuth()
 
+
     const handleFileUpload = async (file) => {
         setIsUploading(true)
 
         try {
+            console.log("selectedUsers: ",selectedUsers)
             //GET USER EMAIL ELSE IF RETURN NULL WHEN USER IS NOT LOGGED IN
-            const email = user?.email || "";
+        // const phoneNumber  = await getUserPhoneNumber(user);
+            const phoneNumber = selectedUsers[0]["phone"];
+
+            console.log("phoneNumber FOUNDDDDDD",phoneNumber)
 
             //GET THE JSON RETRIEVED FROM SCANNIGN THE RECEIPT
-            const data = await analyzeReceipt(file, selectedUsers, email);
+            const data = await analyzeReceipt(file, selectedUsers, phoneNumber);
             console.log("Received data from API:", data)
 
             // Parse structured data
@@ -110,7 +116,7 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
                 selected_users: selectedUsers
             }
 
-            localStorage.setItem("receiptData", JSON.stringify(receiptDataWrapper))
+            localStorage.setItem("jomsplit_receiptData", JSON.stringify(receiptDataWrapper))
             console.log("Stored receipt data with selected users, navigating to review page")
             
              router.push("/review")
@@ -187,11 +193,11 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
                     </div>
                 </CardContent>
 
-                <CardFooter className="flex flex-col gap-3">
+                <CardFooter className="grid grid-cols-2 gap-3">
                     <Button
                         onClick={handleCameraCapture}
                         disabled={isUploading }
-                        className="w-full p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-50"
+                        className="w-full p-4 py-8 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-50"
                     >
                         <Camera className="w-5 h-5 mr-2" />
                         {isUploading ?
@@ -203,10 +209,10 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
                         onClick={handleGallerySelect}
                         disabled={isUploading }
                         variant="outline"
-                        className="w-full p-4 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl disabled:opacity-50"
+                        className="w-full p-4 py-8 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl disabled:opacity-50"
                     >
-                        <Upload className="w-5 h-5 mr-2" />
-                        Choose from Gallery
+                        <GalleryVerticalIcon className="w-5 h-5 mr-2" />
+                         Gallery
                     </Button>
                 </CardFooter>
             </Card>

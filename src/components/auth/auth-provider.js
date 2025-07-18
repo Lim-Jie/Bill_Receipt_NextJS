@@ -12,6 +12,29 @@ const AuthContext = createContext({
   signOut: async () => {},
 })
 
+export async function getUserPhoneNumber(user) {
+    if (!user) {
+        return null;
+    }
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .select('phone')
+            .eq('id', user.id)
+            .single();
+        
+        if (error) {
+            console.error('Error fetching user phone:', error);
+            return user.email; // Fallback to email
+        }
+        
+        return data?.phone || user.email; // Return phone or fallback to email
+    } catch (error) {
+        console.error('Database query error:', error);
+        return user.email; // Fallback to email
+    }
+}
+
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
