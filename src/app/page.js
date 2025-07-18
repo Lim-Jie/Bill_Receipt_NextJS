@@ -7,7 +7,6 @@ import { Plus, Check, Users, Receipt, Sparkles, LogOut, ArrowRight, HelpCircleIc
 import { Button } from "@/components/ui/button";
 import { getUserPhoneNumber, useAuth } from "@/components/auth/auth-provider";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
 import FileUpload from "@/components/clientcomponents/fileUpload";
 import { motion } from 'framer-motion'
 import { supabase } from "@/lib/supabase";
@@ -745,7 +744,7 @@ export default function Main() {
         </motion.div>
 
         {/* Add People Cards - Horizontally Scrollable */}
-     
+
         <div className="flex flex-row justify-between items-center">
           <h3 className="text-lg font-medium bg-white">Your Friends</h3>
           <Button
@@ -886,7 +885,7 @@ export default function Main() {
 
         {!loadingFriends && searchQuery && filteredFriends.length === 0 && friends.length > 0 && (
           <div className="text-center py-4">
-            <p className="text-gray-500 mb-2">No friends match "{searchQuery}"</p>
+            <p className="text-gray-500 mb-2">No friends match &rsquo;&rsquo;{searchQuery}&rsquo;&rsquo;</p>
             <button
               onClick={() => setSearchQuery('')}
               className="text-purple-600 text-sm hover:underline"
@@ -943,7 +942,13 @@ export default function Main() {
                         ? 'border-gray-200 '
                         : 'border-gray-100'
                       }`}
-                    onClick={() => toggleTransactionSelection(index)}
+                    onClick={() => {
+                      if (user) {
+                        router.push(`/receipt_id/${receipt.id}`);
+                      } else {
+                        toast.info("Please sign in to view receipt details");
+                      }
+                    }}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -956,8 +961,18 @@ export default function Main() {
 
                         <div className="flex items-center justify-between text-sm text-gray-600 mt-2">
                           <div className="flex items-center space-x-6">
-                            <div className="flex flex-col items-center mt-3">
+                            <div className="flex flex-row items-center gap-1 pr-3">
+                              <span className="text-lg">📍</span>
+                              <span className="text-xs text-gray-400/80">{receipt.address}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm text-gray-600 mt-2">
+                          <div className="flex items-center space-x-6">
+                            <div className="flex flex-row items-center mt-3 gap-3">
                               <span className="text-xs">{formatDate(receipt.created_at)}</span>
+                              <span className="text-xs">{receipt.time}</span>
                             </div>
                           </div>
                         </div>
@@ -965,20 +980,21 @@ export default function Main() {
 
                       <div className="text-right flex items-center space-x-3">
                         <div className="flex flex-col gap-3">
-                          <div className="flex text-xl font-bold text-purple-400 ml-auto">
-                            {user ? (
-                              formatCurrency(receipt?.total_paid || 0)
-                            ) : (
-                              formatCurrency(receipt.total_paid || 0)
-                            )}
+                          <div className="flex text-sm rounded-xl text-gray-700 font-semibold ml-auto">
+                            <div className="flex flex-row text-lg">
+                              {user ? (
+                                formatCurrency(receipt?.total_paid || 0)
+                              ) : (
+                                formatCurrency(receipt.total_paid || 0)
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-row items-center gap-2 text-xs">
-                            <span className="">Total :</span>
-                            <span className=" font-semibold">
-                              {formatCurrency(receipt.nett_amount)}
 
+                          {/* <div className="flex flex-row items-center gap-2 text-xs ml-auto">
+                            <span className="font-semibold">
+                              Total:{formatCurrency(receipt.nett_amount)}
                             </span>
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     </div>

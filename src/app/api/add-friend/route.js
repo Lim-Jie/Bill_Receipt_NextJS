@@ -109,6 +109,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'You are already friends' }, { status: 400 })
     }
 
+    // Determine which nickname field belongs to the current user
+    const isCurrentUserSmaller = user.id === smallerId;
+    const currentUserNickname = null; // Current user's nickname for the friend (null by default)
+    const friendNickname = friendName; // The nickname the current user gives to their friend
+
     // insert friendship
     const { error: insertErr } = await supabaseAdmin
       .from('friendships')
@@ -117,6 +122,8 @@ export async function POST(request) {
           id: `${smallerId}_${largerId}`,
           user1_id: smallerId, 
           user2_id: largerId,
+          user1_nickname: isCurrentUserSmaller ? currentUserNickname : friendNickname,
+          user2_nickname: isCurrentUserSmaller ? friendNickname : currentUserNickname,
           invited_by: user.id
         }
       )

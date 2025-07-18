@@ -16,8 +16,29 @@ export default function SubmitReceiptButton({ billData: propBillData }) {
     const [sendingNotifications, setSendingNotifications] = useState(false)
     const [notificationsSent, setNotificationsSent] = useState(false)
     const [savingReceipt, setSavingReceipt] = useState(false)
+    const [countdown, setCountdown] = useState(null)
     const { user } = useAuth()
+    const router = useRouter();
 
+    // Countdown effect
+    useEffect(() => {
+        if (notificationsSent && countdown === null) {
+            setCountdown(3)
+            
+            const timer = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer)
+                        router.push("/")
+                        return 0
+                    }
+                    return prev - 1
+                })
+            }, 1000)
+
+            return () => clearInterval(timer)
+        }
+    }, [notificationsSent, countdown, router])
 
     const saveReceiptToDatabase = async () => {
 
@@ -52,6 +73,8 @@ export default function SubmitReceiptButton({ billData: propBillData }) {
                 time: structured.time,
                 location_name: structured.location_name,
                 address: structured.address,
+                items_object: structured.items,
+                participants_object: structured.participants
             };
 
             console.log("📝 Inserting receipt payload:", payload);
@@ -185,10 +208,18 @@ export default function SubmitReceiptButton({ billData: propBillData }) {
                         {savingReceipt ? "Saving..." : "Sending Notifications..."}
                     </>
                 ) : notificationsSent ? (
-                    <>
+                    <div className="flex items-center space-x-2">
                         <Check className="w-5 h-5" />
-                        Notifications Sent
-                    </>
+                        <span>Notifications Sent</span>
+                        {countdown !== null && countdown > 0 && (
+                            <div className="flex items-center space-x-1">
+                                <span className="text-gray-500">•</span>
+                                <span className="text-sm text-gray-600">
+                                    Redirecting in {countdown}s
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 ) : (
                     <>
                         <MessageCircle className="w-8 h-8 mr-2 fill-green-300 stroke-2 stroke-white" />

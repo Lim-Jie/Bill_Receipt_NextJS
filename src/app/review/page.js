@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ArrowLeft, Edit3, Users, Sun, Sunset, Moon, CloudSun, Stars, CameraIcon, Camera, CameraOff, SwitchCamera, Check, ScanIcon, SearchIcon, PlusIcon, MessageCircle, ForwardIcon, InfoIcon } from "lucide-react"
+import { ArrowLeft, Edit3, Users, Sun, Sunset, Moon, CloudSun, Stars, CameraIcon, Camera, CameraOff, SwitchCamera, Check, ScanIcon, SearchIcon, PlusIcon, MessageCircle, ForwardIcon, InfoIcon, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import SubmitReceiptButton from "@/test"
 import ReceiptCard from "@/components/ReceiptCard"
+import { useAuth } from "@/components/auth/auth-provider"
+import { supabase } from "@/lib/supabase"
 
 
 
@@ -158,7 +160,14 @@ export default function ReviewPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [calculatedDifference, setCalculatedDifference] = useState(0);
-  const [billDivided, setBillDivided] = useState(false); // Add this state
+  const [billDivided, setBillDivided] = useState(false);
+  
+  // New states for friend search
+  const [searchQuery, setSearchQuery] = useState("")
+  const [friends, setFriends] = useState([])
+  const [filteredFriends, setFilteredFriends] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     const evaluateBillNettPrice = (structured) => {
@@ -276,6 +285,137 @@ export default function ReviewPage() {
     router.push("/split_bill")
   }
 
+  // Search friends function
+  const searchFriends = async (query) => {
+    if (!user || !query.trim()) {
+      setFilteredFriends([])
+      return
+    }
+
+    setSearchLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        console.error("No session token available")
+        return
+      }
+
+      // Search through friendships and get friend details
+      const { data: friendshipsData, error } = await supabase
+        .from('friendships')
+        .select(`
+          id,
+          user1_id,
+          user2_id,
+          user1_nickname,
+          user2_nickname,
+          user1:users!friendships_user1_id_fkey(id, name, phone),
+          user2:users!friendships_user2_id_fkey(id, name, phone)
+        `)
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+
+      if (error) {
+        console.error('Error searching friends:', error)
+        return
+      }
+
+      // Process friendships to get the "other" user and apply search filter
+      const searchResults = friendshipsData
+        .map(friendship => {
+          const isCurrentUserUser1 = friendship.user1_id === user.id
+          const otherUser = isCurrentUserUser1 ? friendship.user2 : friendship.user1
+          
+          // Get the nickname that the current user has given to their friend
+          const nickname = isCurrentUserUser1 
+            ? friendship.user2_nickname 
+            : friendship.user1_nickname
+          
+          // Use nickname if it exists and is not null/empty, otherwise use the user's real name
+          const displayName = (nickname && nickname.trim()) ? nickname : otherUser.name
+          
+          return {
+            id: otherUser.id,
+            name: displayName,
+            phone: otherUser.phone,
+            avatar: displayName.charAt(0).toUpperCase(), // First letter for avatar
+            realName: otherUser.name, // Keep the real name for reference
+            nickname: nickname // Keep the nickname for reference
+          }
+        })
+        .filter(friend => {
+          const searchLower = query.toLowerCase()
+          return (
+            friend.name.toLowerCase().includes(searchLower) ||
+            friend.phone.toLowerCase().includes(searchLower) ||
+            (friend.realName && friend.realName.toLowerCase().includes(searchLower))
+          )
+        })
+
+      setFilteredFriends(searchResults)
+    } catch (error) {
+      console.error('Error in searchFriends:', error)
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  // Handle search input changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchFriends(searchQuery)
+    }, 300) // Debounce search
+
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, user, searchFriends])
+
+  // Add friend to selected users
+  const addFriendToSelection = (friend) => {
+    const isAlreadySelected = selectedUsers.some(user => user.id === friend.id)
+    
+    if (!isAlreadySelected) {
+      // Create a clean friend object for the selected users list
+      const friendToAdd = {
+        id: friend.id,
+        name: friend.name, // This already has the nickname logic applied
+        phone: friend.phone,
+        avatar: friend.avatar
+      }
+      
+      const newSelectedUsers = [...selectedUsers, friendToAdd]
+      setSelectedUsers(newSelectedUsers)
+      
+      // Update localStorage with new selection
+      const data = localStorage.getItem("jomsplit_receiptData")
+      if (data) {
+        const parsed = JSON.parse(data)
+        parsed.selected_users = newSelectedUsers
+        localStorage.setItem("jomsplit_receiptData", JSON.stringify(parsed))
+      }
+      
+      console.log(`Added friend: ${friend.name} (ID: ${friend.id}) to selected users`)
+      console.log("Selected users: ", selectedUsers)
+    }
+    
+    // Clear search after selection
+    setSearchQuery("")
+    setFilteredFriends([])
+  }
+
+  // Remove friend from selection
+  const removeFriendFromSelection = (friendId) => {
+    const newSelectedUsers = selectedUsers.filter(user => user.id !== friendId)
+    setSelectedUsers(newSelectedUsers)
+    
+    // Update localStorage
+    const data = localStorage.getItem("jomsplit_receiptData")
+    if (data) {
+      const parsed = JSON.parse(data)
+      parsed.selected_users = newSelectedUsers
+      localStorage.setItem("jomsplit_receiptData", JSON.stringify(parsed))
+    }
+  }
+
   if (isLoading || !receiptData || !isMounted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
@@ -303,32 +443,99 @@ export default function ReviewPage() {
         </div>
       </div>
 
-
       <div className="px-5 mt-7">
         <h1 className="font-semibold text-3xl text-purple-600">
           1. Select your friends
         </h1>
       </div>
 
-
-      <div className="flex flex-row items-center mt-5 px-5 gap-3">
-        <div className="flex flex-row items-center bg-gray-100 rounded-3xl w-full p-3 text-gray-400 gap-3">
-          <SearchIcon width={16} height={16} /> Tag friends
+      {/* Enhanced Search Bar */}
+      <div className="flex flex-row items-center mt-5 px-5 gap-3 relative">
+        <div className="flex flex-row items-center bg-gray-100 rounded-3xl w-full p-3 text-gray-400 gap-3 relative">
+          <SearchIcon width={16} height={16} />
+          <input
+            type="text"
+            placeholder="Search friends by name or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent text-gray-700 placeholder-gray-400 outline-none text-sm"
+            disabled={!user}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setFilteredFriends([])
+              }}
+              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
         <span className="outline-1 outline-gray-300 rounded-3xl p-2 text-xs w-fit h-fit">
           <PlusIcon width={16} height={16} />
         </span>
+
+        {/* Search Results Dropdown */}
+        {searchQuery && (
+          <div className="absolute top-full left-5 right-5 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-20 max-h-60 overflow-y-auto">
+            {searchLoading ? (
+              <div className="p-3 text-center text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mx-auto mb-2"></div>
+                Searching...
+              </div>
+            ) : filteredFriends.length > 0 ? (
+              <div className="divide-y divide-gray-100">
+                {filteredFriends.map((friend) => (
+                  <button
+                    key={friend.id}
+                    onClick={() => addFriendToSelection(friend)}
+                    className="w-full p-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3"
+                    disabled={selectedUsers.some(user => user.id === friend.id)}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center text-sm font-medium">
+                      {friend.avatar}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{friend.name}</p>
+                      <p className="text-sm text-gray-500">{friend.phone}</p>
+                    </div>
+                    {selectedUsers.some(user => user.id === friend.id) && (
+                      <Check className="w-4 h-4 text-green-500" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3 text-center text-gray-500">
+                No friends found matching &rsquo;&rsquo;{searchQuery}&rsquo;&rsquo;
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-
-
+      {/* Selected Users Section */}
       <div className="flex px-5">
-        {/* Selected Users Section - Add this after the edit button */}
         {selectedUsers.length > 0 && (
-          <div className="flex gap-2 pt-5">
+          <div className="flex flex-wrap gap-2 pt-5">
             {selectedUsers.map((user, index) => (
-              <Badge key={index} variant="secondary" className="py-1  rounded-2xl outline-1 outline-gray-200/60 bg-white shadow-md">
+              <Badge 
+                key={user.id || index} 
+                variant="secondary" 
+                className="py-1 rounded-2xl outline-1 outline-gray-200/60 bg-white shadow-md flex items-center gap-2"
+              >
+                <div className="w-4 h-4 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
                 {user.name}
+                <button
+                  onClick={() => removeFriendFromSelection(user.id)}
+                  className="hover:bg-gray-200 rounded-full p-0.5 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </Badge>
             ))}
           </div>
@@ -379,9 +586,6 @@ export default function ReviewPage() {
         </h1>
       </div>
 
-      {/* separator line */}
-      <div className="w-full h-[1px] bg-gray-200 mt-5"></div>
-
 
       <div className="px-4 py-2.5 pt-0 space-y-2">
         {/* Items List */}
@@ -399,18 +603,6 @@ export default function ReviewPage() {
                 <p>{formatDate(receiptData.date)}</p>
                 <p>{formatTime(receiptData.time)}</p>
               </div>
-
-              {/* <div className={``}>
-                {(() => {
-                  const timeInfo = getTimeOfDayInfo(receiptData.time);
-                  const IconComponent = timeInfo.icon;
-                  return (
-                    <>
-                      <IconComponent className={`w-4 h-4 ${timeInfo.iconColor}`} />
-                    </>
-                  );
-                })()}
-              </div> */}
             </div>
           </div>
 

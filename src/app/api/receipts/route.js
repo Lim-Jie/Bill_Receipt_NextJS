@@ -17,8 +17,8 @@ export async function GET(request) {
     console.log('receipts ▶️ received GET')
 
     // grab the Bearer token
-    const headerStore = headers()
-    const authHeader = await headerStore.get('authorization')
+    const headerStore = await headers()
+    const authHeader = headerStore.get('authorization')
     console.log('receipts ▶️ auth header:', authHeader)
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('receipts ❌ missing token')
