@@ -171,7 +171,7 @@ export default function FileUpload({ isOpen, onClose, selectedUsers = [] }) {
     if (!isOpen) return null
 
     return (
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 transition-all duration-500 ease-in-out `}>
+        <div className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 transition-all duration-500 ease-in-out `}>
             <Card className={`w-full max-w-md mx-auto bg-white transition-all duration-500 ease-in-out`}>
                 <CardHeader className="flex flex-row justify-between">
                     <CardTitle className="flex items-center gap-2 pr-12 justify-between">

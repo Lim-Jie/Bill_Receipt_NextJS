@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/auth-provider';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, MapPin, Calendar, Clock, Receipt, Users, DollarSign, FileText, Share2, Download, User } from 'lucide-react';
+import { ArrowLeft, Receipt, Users, DollarSign, FileText, Share2, Download, User, Percent, ForkKnife } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -33,24 +33,17 @@ export default function ReceiptDetailPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/');
-      return;
-    }
+    fetchReceiptDetail();
+  }, [user, params.id]);
 
-    const fetchReceiptDetail = async () => {
+  const fetchReceiptDetail = async () => {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        toast.error("Authentication required");
-        return;
-      }
 
       const response = await fetch(`/api/receipts/${params.id}`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
       });
 
@@ -68,10 +61,6 @@ export default function ReceiptDetailPage() {
     }
   };
 
-    fetchReceiptDetail();
-  }, [user, params.id, router]);
-
-  
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
@@ -111,7 +100,7 @@ export default function ReceiptDetailPage() {
       <div className="max-w-md mx-auto min-h-screen bg-gray-50">
         <div className="bg-white p-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <button 
+            <button
               onClick={() => router.back()}
               className="p-1 hover:bg-gray-100 rounded-full"
             >
@@ -124,7 +113,7 @@ export default function ReceiptDetailPage() {
           <div className="text-center py-8">
             <Receipt className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-600 font-medium mb-2">Receipt not found</p>
-            <p className="text-sm text-gray-500 mb-4">The receipt you&rsquo;re looking for doesn&rsquo;t exist or you don&rsquo;t have access to it.</p>
+            <p className="text-sm text-gray-500 mb-4">The receipt you're looking for doesn't exist or you don't have access to it.</p>
             <button
               onClick={() => router.back()}
               className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
@@ -143,7 +132,7 @@ export default function ReceiptDetailPage() {
       <div className="bg-white p-4 border-b border-gray-200 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <button 
+            <button
               onClick={() => router.back()}
               className="p-1 hover:bg-gray-100 rounded-full"
             >
@@ -172,13 +161,76 @@ export default function ReceiptDetailPage() {
         </div>
       </div>
 
-      <div className="p-4 space-y-4 pb-20">
+      <div className={`rounded-2xl p-4 bg-white shadow-sm outline-1 outline-gray-100/80 transition-all duration-200 `}>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1">
+              <div className="rounded-lg flex p-1">
+                <ForkKnife className="w-4 h-4 text-purple-500 stroke-2 fill-purple-300" />
+              </div>
+              <h4 className="text-gray-900 text-base font-medium pr-2">{receipt.name || 'Untitled Receipt'}</h4>
+            </div>
+
+            <div className="flex items-center justify-between text-sm text-gray-600 mt-2">
+              <div className="flex items-center space-x-6">
+                <div className="flex flex-row items-center gap-1 pr-3">
+                  <span className="text-lg">📍</span>
+                  <span className="text-xs text-gray-400/80">{receipt.address}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-sm text-gray-600 mt-2">
+              <div className="flex items-center w-full space-x-6">
+                <div className="flex flex-row w-full items-center mt-3 gap-3 justify-between">
+                  <div></div>
+                  <div>
+                    <div className='flex gap-3 items-center'>
+                      <span className='rounded-2xl px-2 py-1.5 bg-gray-100 text-xs '>{receipt?.category || "Unavailable category"}</span>
+                      <span className="text-xs">{formatDate(receipt.created_at)}</span>
+                      <span className="text-xs">{receipt.time}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className='flex flex-row justify-between mt-3'>
+
+          <div className='flex flex-col text-purple-500'>
+            <p className='text-xs'> Your share </p>
+            {user && receipt.participants_object?.find(p => p.user_id === user.id)?.total_paid ? (
+              <span className='text-lg'>
+                {formatCurrency(
+                  receipt.participants_object?.find(p => p.user_id === user.id)?.total_paid || 0
+                )}
+              </span>
+            ) : (
+              <span className='outline-1 outline-gray-200 px-3 py-1 rounded-2xl text-xs text-gray-500 mt-1'>
+               Login to view your share
+              </span>
+            )}
+          </div>
+
+          <div className='flex flex-col'>
+            <p className='text-xs text-gray-500'> Total bill </p>
+            <span className='text-lg'>{formatCurrency(receipt?.nett_amount || 0)}</span>
+          </div>
+        </div>
+
+      </div>
+
+
+
+      <div className="mt-5 space-y-4 pb-20">
         {/* Receipt Image */}
         {receipt.file_url && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl overflow-hidden shadow-sm"
+            className="bg-white overflow-hidden shadow-sm"
           >
             <img
               src={receipt.file_url}
@@ -188,131 +240,66 @@ export default function ReceiptDetailPage() {
           </motion.div>
         )}
 
-        {/* Basic Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl p-4 shadow-sm"
-        >
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-              <Receipt className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">{receipt.name || 'Untitled Receipt'}</h2>
-              <p className="text-sm text-gray-500">{receipt.category || 'General'}</p>
-            </div>
-          </div>
-          
-          {receipt.notes && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <div className="flex items-start space-x-2">
-                <FileText className="w-4 h-4 text-gray-500 mt-0.5" />
-                <p className="text-sm text-gray-700">{receipt.notes}</p>
-              </div>
-            </div>
-          )}
-        </motion.div>
 
-        {/* Location & Time */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl p-4 shadow-sm"
-        >
-          <h3 className="font-semibold text-gray-900 mb-3">Location & Time</h3>
-          <div className="space-y-3">
-            {(receipt.location_name || receipt.address) && (
-              <div className="flex items-start space-x-3">
-                <MapPin className="w-5 h-5 text-gray-500 mt-0.5" />
-                <div>
-                  {receipt.location_name && (
-                    <p className="font-medium text-gray-900">{receipt.location_name}</p>
-                  )}
-                  {receipt.address && (
-                    <p className="text-sm text-gray-600">{receipt.address}</p>
-                  )}
+        {/* {receipt.notes && (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <FileText className="w-4 h-4 text-gray-500 mt-0.5" />
+                    <p className="text-sm text-gray-700">{receipt.notes}</p>
+                  </div>
                 </div>
-              </div>
-            )}
-            
-            <div className="flex items-center space-x-3">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              <p className="text-sm text-gray-700">{formatDate(receipt.date || receipt.created_at)}</p>
-            </div>
-            
-            {receipt.time && (
-              <div className="flex items-center space-x-3">
-                <Clock className="w-5 h-5 text-gray-500" />
-                <p className="text-sm text-gray-700">{receipt.time}</p>
-              </div>
-            )}
-          </div>
-        </motion.div>
+              )} */}
 
-        {/* Amount Breakdown */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl p-4 shadow-sm"
-        >
-          <h3 className="font-semibold text-gray-900 mb-3">Amount Breakdown</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Subtotal</span>
-              <span className="font-medium">{formatCurrency(receipt.subtotal_amount || 0)}</span>
-            </div>
-            
-            {receipt.tax_amount > 0 && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Tax ({(receipt.tax_rate || 0).toFixed(1)}%)</span>
-                <span className="font-medium">{formatCurrency(receipt.tax_amount)}</span>
-              </div>
-            )}
-            
-            {receipt.service_charge_amount > 0 && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Service Charge ({(receipt.service_charge_rate || 0).toFixed(1)}%)</span>
-                <span className="font-medium">{formatCurrency(receipt.service_charge_amount)}</span>
-              </div>
-            )}
-            
-            <div className="border-t pt-3">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold text-gray-900">Total Amount</span>
-                <span className="text-lg font-bold text-purple-600">{formatCurrency(receipt.nett_amount)}</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
 
         {/* Items List */}
-        {receipt.items && receipt.items.length > 0 && (
+        {/* {receipt.items_object && receipt.items_object.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="bg-white rounded-xl p-4 shadow-sm"
           >
-            <h3 className="font-semibold text-gray-900 mb-3">Items ({receipt.items.length})</h3>
-            <div className="space-y-2">
-              {receipt.items.map((item, index) => (
-                <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium">
-                      {item.item_id}
+            <h3 className="font-semibold text-gray-900 mb-3">Items ({receipt.items_object.length})</h3>
+            <div className="space-y-3">
+              {receipt.items_object.map((item, index) => (
+                <div key={item.id} className="border border-gray-100 rounded-lg p-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium">
+                          {item.id}
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 ml-8">
+                        Qty: {item.quantity || 1}
+                        {item.consumed_by && item.consumed_by.length > 0 && (
+                          <span className="ml-3">Shared by: {item.consumed_by.length} people</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400 ml-8 mt-1">
+                        {item.tax_amount > 0 && (
+                          <span className="mr-3">Tax: {formatCurrency(item.tax_amount)}</span>
+                        )}
+                        {item.rounding_adj && (
+                          <span>Rounding: {formatCurrency(item.rounding_adj)}</span>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-sm text-gray-900">{item.name}</span>
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-gray-700">{formatCurrency(item.nett_price)}</div>
+                      {item.price !== item.nett_price && (
+                        <div className="text-xs text-gray-500 line-through">
+                          Pre-tax: {formatCurrency(item.price)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-gray-700">{formatCurrency(item.price)}</span>
                 </div>
               ))}
             </div>
           </motion.div>
-        )}
+        )} */}
 
         {/* Participants & Split Information */}
         <motion.div
@@ -321,112 +308,150 @@ export default function ReceiptDetailPage() {
           transition={{ delay: 0.5 }}
           className="bg-white rounded-xl p-4 shadow-sm"
         >
-          <h3 className="font-semibold text-gray-900 mb-3">
-            Split Information ({receipt.participants?.length || 0} participants)
-          </h3>
-          
-          {/* Split Method */}
+          {/* <h3 className="font-semibold text-gray-900 mb-3">
+            Split Information ({receipt.participants_object?.length || 0} participants)
+          </h3> */}
+
+          {/* Split Method
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-2">
               <Users className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-600">Split Method:</span>
               <span className="text-sm font-medium text-gray-900 capitalize">
-                {receipt.split_method || 'Equal'}
+                {receipt.split_method === 'not_set' ? 'Custom Split' : receipt.split_method || 'Equal'}
               </span>
             </div>
-          </div>
+          </div> */}
 
-          {/* Your Share Highlight */}
-          <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <DollarSign className="w-4 h-4 text-purple-600" />
-                <span className="text-sm font-medium text-purple-900">Your Share</span>
-              </div>
-              <span className="text-lg font-bold text-purple-600">
-                {formatCurrency(receipt.current_user_share || 0)}
-              </span>
-            </div>
-          </div>
 
           {/* All Participants */}
-          {receipt.participants && receipt.participants.length > 0 && (
+          {receipt.participants_object && receipt.participants_object.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-gray-700">All Participants:</h4>
-              {receipt.participants.map((participant, index) => (
-                <div key={index} className={`flex items-center justify-between p-3 rounded-lg border ${
-                  participant.user_id === user.id 
-                    ? 'bg-purple-50 border-purple-200' 
-                    : 'bg-gray-50 border-gray-200'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      participant.user_id === user.id 
-                        ? 'bg-purple-100' 
+              {receipt.participants_object.map((participant, index) => (
+                <div key={participant.user_id || index} className={`border rounded-lg p-3 ${participant.user_id === user?.id
+                  ? 'bg-purple-50 border-purple-200'
+                  : 'bg-gray-50 border-gray-200'
+                  }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${participant.user_id === user?.id
+                        ? 'bg-purple-100'
                         : 'bg-gray-100'
-                    }`}>
-                      <User className={`w-4 h-4 ${
-                        participant.user_id === user.id 
-                          ? 'text-purple-600' 
+                        }`}>
+                        <span className={`text-xs font-medium ${participant.user_id === user?.id
+                          ? 'text-purple-600'
                           : 'text-gray-500'
-                      }`} />
+                          }`}>
+                          {participant.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {participant.name}
+                          {participant.user_id === user?.id && (
+                            <span className="ml-2 text-xs text-purple-600 font-medium">(You)</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500">{participant.phone}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {participant.name}
-                        {participant.user_id === user.id && (
-                          <span className="ml-2 text-xs text-purple-600 font-medium">(You)</span>
-                        )}
-                      </p>
-                      {participant.email && (
-                        <p className="text-xs text-gray-500">{participant.email}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold ${
-                      participant.user_id === user.id 
-                        ? 'text-purple-600' 
+                    <div className="text-right">
+                      <p className={`text-sm font-semibold ${participant.user_id === user?.id
+                        ? 'text-purple-600'
                         : 'text-gray-700'
-                    }`}>
-                      {formatCurrency(participant.total_paid)}
-                    </p>
+                        }`}>
+                        {formatCurrency(participant.total_paid)}
+                      </p>
+                    </div>
                   </div>
+
+                  {/* Show item breakdown for this participant */}
+                  {participant.items_paid && participant.items_paid.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 mb-1">Item breakdown:</p>
+                      <div className="space-y-1">
+                        {participant.items_paid.map((item, itemIndex) => {
+                          // Find the original item from items_object to get the name
+                          const originalItem = receipt.items_object?.find(i => i.id === item.id);
+                          return (
+                            <div key={itemIndex} className="flex justify-between items-center text-xs">
+                              <div className="flex items-center space-x-1 flex-1">
+                                <span className="text-gray-600 truncate">
+                                  {originalItem?.name || `Item ${item.id}`}
+                                </span>
+                                {item.percentage < 100 && (
+                                  <div className="flex items-center space-x-1 flex-shrink-0">
+                                    <Percent className="w-3 h-3 text-gray-400" />
+                                    <span className="text-gray-500">({item.percentage.toFixed(1)}%)</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col items-end text-right ml-2">
+                                <span className="text-gray-700 font-medium">{formatCurrency(item.value)}</span>
+                                {item.split_type && (
+                                  <span className="text-gray-400 text-xs capitalize">{item.split_type}</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Show total for this participant */}
+                      <div className="mt-2 pt-1 border-t border-gray-100">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-medium text-gray-600">Subtotal:</span>
+                          <span className="font-semibold text-gray-700">
+                            {formatCurrency(participant.total_paid)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {/* Bill Owner Info */}
+          {/* Bill Owner Info  CHANGE TODO: to phone number*/}
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center space-x-2">
               <User className="w-4 h-4 text-blue-600" />
               <span className="text-sm text-blue-900">
                 <span className="font-medium">Bill paid by:</span> {
-                  receipt.paid_by === user.id ? 'You' : 
-                  receipt.participants?.find(p => p.user_id === receipt.paid_by)?.name || 'Unknown'
+                  receipt.paid_by === user?.email ? 'You' :
+                    receipt.participants_object?.find(p => p.phone === receipt.paid_by)?.name ||
+                    receipt.participants_object?.find(p => p.user_id === receipt.paid_by)?.name ||
+                    receipt.paid_by
                 }
               </span>
             </div>
           </div>
-        </motion.div>
 
-        {/* Current User's Item Breakdown */}
-        {receipt.current_user_breakdown && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="bg-white rounded-xl p-4 shadow-sm"
-          >
-            <h3 className="font-semibold text-gray-900 mb-3">Your Item Breakdown</h3>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <pre className="text-xs text-gray-700 whitespace-pre-wrap overflow-x-auto">
-                {JSON.stringify(receipt.current_user_breakdown, null, 2)}
-              </pre>
+          {/* Summary breakdown */}
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <h5 className="text-sm font-medium text-gray-700 mb-2">Split Summary:</h5>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total participants:</span>
+                <span className="font-medium">{receipt.participants_object?.length || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total amount:</span>
+                <span className="font-medium">{formatCurrency(receipt.nett_amount)}</span>
+              </div>
+              {/* <div className="flex justify-between">
+                <span className="text-gray-600">Sum of individual payments:</span>
+                <span className="font-medium">
+                  {formatCurrency(
+                    receipt.participants_object?.reduce((sum, p) => sum + p.total_paid, 0) || 0
+                  )}
+                </span>
+              </div> */}
             </div>
-          </motion.div>
-        )}
+          </div>
+        </motion.div>
       </div>
     </div>
   );

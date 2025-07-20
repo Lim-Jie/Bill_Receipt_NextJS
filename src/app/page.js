@@ -589,7 +589,7 @@ export default function Main() {
       {/* Header */}
       <div className="bg-white p-6">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl text-gray-900">JomSplit.com</h1>
+          <h1 className="text-2xl font-bold text-gray-600">JomSplit.com</h1>
           <div className="flex items-center space-x-2">
             <div className="flex flex-col gap-1">
               <div className="flex flex-row items-center ml-auto">
@@ -638,7 +638,7 @@ export default function Main() {
           </motion.div>
         ) : (
           <>
-            <motion.div
+            {/* <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.2, ease: "easeOut" }}
@@ -651,7 +651,7 @@ export default function Main() {
                   <p className="text-xs text-purple-700">How to use our features? Click here to find out!</p>
                 </div>
               </div>
-            </motion.div>
+            </motion.div> */}
           </>
         )}
 
@@ -789,7 +789,7 @@ export default function Main() {
         {/* Friends List Section - Now using filteredFriends */}
         <div className="mb-3">
           <div className="overflow-x-auto pb-4 hide-scrollbar">
-            <div className="flex space-x-4 min-w-max px-4">
+            <div className="flex space-x-4 min-w-max px-4 mt-2">
               {filteredFriends.map((f) => {
                 const isSelected = selectedUsers.some(u => u.phone === f.phone);
                 const avatar = f.name.substring(0, 2).toUpperCase();
@@ -799,7 +799,7 @@ export default function Main() {
                       className={`rounded-2xl p-4 text-center transition-all duration-200 py-5 ${user ? 'cursor-pointer' : 'cursor-default'
                         } ${isSelected
                           ? 'bg-purple-100 border-2 border-purple-300'
-                          : 'bg-gray-100 hover:bg-gray-200'
+                          : 'outline outline-gray-200 bg-gray-100 hover:bg-gray-200'
                         }`}
                       onClick={() => user && toggleUserSelection({
                         id: f.id,
@@ -956,7 +956,7 @@ export default function Main() {
                           <div className="rounded-lg flex p-1">
                             <ForkKnife className="w-4 h-4 text-purple-500 stroke-2 fill-purple-300" />
                           </div>
-                          <h4 className="text-gray-900 text-base font-medium">{receipt.name || 'Untitled Receipt'}</h4>
+                          <h4 className="text-gray-900 text-base font-medium pr-2">{receipt.name || 'Untitled Receipt'}</h4>
                         </div>
 
                         <div className="flex items-center justify-between text-sm text-gray-600 mt-2">

@@ -12,7 +12,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const page = parseInt(searchParams.get('page') || '1')
   const limit = parseInt(searchParams.get('limit') || '5')
-  
+
   try {
     console.log('receipts ▶️ received GET')
 
@@ -70,7 +70,9 @@ export async function GET(request) {
           created_at,
           updated_at,
           location_name,
-          address
+          address,
+          items_object,
+          participants_object
         )
       `)
       .eq('user_id', user.id)
@@ -118,7 +120,9 @@ export async function GET(request) {
       updated_at: item.receipts.updated_at,
       location_name: item.receipts.location_name,
       address: item.receipts.address,
-      total_paid: item.total_paid
+      total_paid: item.total_paid,
+      items_object: item.receipts.items_object,
+      participants_object: item.receipts.participants_object
 
     })) || []
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ArrowLeft, Mail, MessageCircle, Check, Copy, HomeIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -10,7 +10,6 @@ import { toast } from "sonner"
 import { sendEmail, generateBillSplitEmail } from "@/lib/email-service"
 
 export default function SubmitReceiptButton({ billData: propBillData }) {
-    console.log("🚀 TestPage component initialized")
 
     const [billData, setBillData] = useState(propBillData || null)
     const [sendingNotifications, setSendingNotifications] = useState(false)
@@ -20,27 +19,34 @@ export default function SubmitReceiptButton({ billData: propBillData }) {
     const { user } = useAuth()
     const router = useRouter();
 
+    useEffect(() => {
+    console.log("Test page mounted/updated");
+    }, []); // Only logs on mount
+
+
     // Countdown effect
     useEffect(() => {
         if (notificationsSent && countdown === null) {
             setCountdown(3)
-            
-            const timer = setInterval(() => {
-                setCountdown(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timer)
-                        router.push("/")
-                        return 0
-                    }
-                    return prev - 1
-                })
-            }, 1000)
-
-            return () => clearInterval(timer)
         }
-    }, [notificationsSent, countdown, router])
+    }, [notificationsSent, countdown])
 
-    const saveReceiptToDatabase = async () => {
+    // Separate countdown timer effect
+    useEffect(() => {
+        if (countdown > 0) {
+            const timer = setTimeout(() => {
+                setCountdown(prev => prev - 1)
+            }, 1000)
+            
+            return () => clearTimeout(timer)
+        } else if (countdown === 0) {
+            // Navigate when countdown reaches 0
+            router.push("/")
+        }
+    }, [countdown, router])
+
+    const saveReceiptToDatabase = useCallback(
+    async () => {
 
         if (!user) {
             console.log("❌ Cannot save receipt - missing user")
@@ -152,9 +158,11 @@ export default function SubmitReceiptButton({ billData: propBillData }) {
             setSavingReceipt(false)
             console.log("🏁 saveReceiptToDatabase process finished")
         }
-    }
+     }, [user, billData]) // Only depend on user and billData
 
-    const sendNotifications = async () => {
+
+    const sendNotifications = useCallback(
+        async () => {
         console.log("📨 sendNotifications called")
         setSendingNotifications(true)
 
@@ -162,7 +170,6 @@ export default function SubmitReceiptButton({ billData: propBillData }) {
             if (!billData || !user) {
                 throw new Error("Missing required data for sending notifications")
             }
-
             await saveReceiptToDatabase()
 
             setSendingNotifications(false)
@@ -173,7 +180,7 @@ export default function SubmitReceiptButton({ billData: propBillData }) {
             setSendingNotifications(false)
             toast.error("Failed to send email notifications. Please try again.")
         }
-    }
+    }, [billData, user, saveReceiptToDatabase])
 
 
     if (!billData) {

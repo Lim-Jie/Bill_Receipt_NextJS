@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ArrowLeft, Edit3, Users, Sun, Sunset, Moon, CloudSun, Stars, CameraIcon, Camera, CameraOff, SwitchCamera, Check, ScanIcon, SearchIcon, PlusIcon, MessageCircle, ForwardIcon, InfoIcon, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -151,6 +151,7 @@ const divideItemsEqually = (receiptData) => {
 
 // Remove the evaluateChatSplitting call from divideItemsEqually since we're now splitting the nett_amount directly
 export default function ReviewPage() {
+
   const [receiptData, setReceiptData] = useState(null)
   const [items, setItems] = useState([])
   const [selectedUsers, setSelectedUsers] = useState([])
@@ -161,13 +162,18 @@ export default function ReviewPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [calculatedDifference, setCalculatedDifference] = useState(0);
   const [billDivided, setBillDivided] = useState(false);
-  
+
   // New states for friend search
   const [searchQuery, setSearchQuery] = useState("")
   const [friends, setFriends] = useState([])
   const [filteredFriends, setFilteredFriends] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
   const { user } = useAuth()
+
+
+ useEffect(() => {
+  console.log("Review page mounted/updated");
+}, []); // Only logs on mount
 
   useEffect(() => {
     const evaluateBillNettPrice = (structured) => {
@@ -285,8 +291,11 @@ export default function ReviewPage() {
     router.push("/split_bill")
   }
 
+
+// Or use React DevTools Profiler instead of console.log in JSX
+
   // Search friends function
-  const searchFriends = async (query) => {
+  const searchFriends = useCallback( async (query) => {
     if (!user || !query.trim()) {
       setFilteredFriends([])
       return
@@ -295,7 +304,7 @@ export default function ReviewPage() {
     setSearchLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (!session?.access_token) {
         console.error("No session token available")
         return
@@ -325,15 +334,15 @@ export default function ReviewPage() {
         .map(friendship => {
           const isCurrentUserUser1 = friendship.user1_id === user.id
           const otherUser = isCurrentUserUser1 ? friendship.user2 : friendship.user1
-          
+
           // Get the nickname that the current user has given to their friend
-          const nickname = isCurrentUserUser1 
-            ? friendship.user2_nickname 
+          const nickname = isCurrentUserUser1
+            ? friendship.user2_nickname
             : friendship.user1_nickname
-          
+
           // Use nickname if it exists and is not null/empty, otherwise use the user's real name
           const displayName = (nickname && nickname.trim()) ? nickname : otherUser.name
-          
+
           return {
             id: otherUser.id,
             name: displayName,
@@ -358,7 +367,7 @@ export default function ReviewPage() {
     } finally {
       setSearchLoading(false)
     }
-  }
+  },[user])
 
   // Handle search input changes
   useEffect(() => {
@@ -367,12 +376,12 @@ export default function ReviewPage() {
     }, 300) // Debounce search
 
     return () => clearTimeout(timeoutId)
-  }, [searchQuery, user, searchFriends])
+  }, [searchQuery, searchFriends])
 
   // Add friend to selected users
   const addFriendToSelection = (friend) => {
     const isAlreadySelected = selectedUsers.some(user => user.id === friend.id)
-    
+
     if (!isAlreadySelected) {
       // Create a clean friend object for the selected users list
       const friendToAdd = {
@@ -381,10 +390,10 @@ export default function ReviewPage() {
         phone: friend.phone,
         avatar: friend.avatar
       }
-      
+
       const newSelectedUsers = [...selectedUsers, friendToAdd]
       setSelectedUsers(newSelectedUsers)
-      
+
       // Update localStorage with new selection
       const data = localStorage.getItem("jomsplit_receiptData")
       if (data) {
@@ -392,11 +401,11 @@ export default function ReviewPage() {
         parsed.selected_users = newSelectedUsers
         localStorage.setItem("jomsplit_receiptData", JSON.stringify(parsed))
       }
-      
+
       console.log(`Added friend: ${friend.name} (ID: ${friend.id}) to selected users`)
       console.log("Selected users: ", selectedUsers)
     }
-    
+
     // Clear search after selection
     setSearchQuery("")
     setFilteredFriends([])
@@ -406,7 +415,7 @@ export default function ReviewPage() {
   const removeFriendFromSelection = (friendId) => {
     const newSelectedUsers = selectedUsers.filter(user => user.id !== friendId)
     setSelectedUsers(newSelectedUsers)
-    
+
     // Update localStorage
     const data = localStorage.getItem("jomsplit_receiptData")
     if (data) {
@@ -448,6 +457,7 @@ export default function ReviewPage() {
           1. Select your friends
         </h1>
       </div>
+
 
       {/* Enhanced Search Bar */}
       <div className="flex flex-row items-center mt-5 px-5 gap-3 relative">
@@ -521,9 +531,9 @@ export default function ReviewPage() {
         {selectedUsers.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-5">
             {selectedUsers.map((user, index) => (
-              <Badge 
-                key={user.id || index} 
-                variant="secondary" 
+              <Badge
+                key={user.id || index}
+                variant="secondary"
                 className="py-1 rounded-2xl outline-1 outline-gray-200/60 bg-white shadow-md flex items-center gap-2"
               >
                 <div className="w-4 h-4 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs">
@@ -551,8 +561,8 @@ export default function ReviewPage() {
         <button
           onClick={() => handleQuickMessage("Can you divide the bill equally?")}
           className={`block w-full text-left p-3 outline-1 outline-gray-200 rounded-lg text-md transition-colors ${billDivided
-              ? 'bg-green-100 hover:bg-green-100 border-green-200 outline-white text-gray-700'
-              : 'hover:bg-blue-50'
+            ? 'bg-green-100 hover:bg-green-100 border-green-200 outline-white text-gray-700'
+            : 'hover:bg-blue-50'
             }`}
         >
           <span className="flex w-full items-center justify-between">
