@@ -290,3 +290,6 @@
 .receipt-card-dark::after {
   background: #2d3748;
 }
+.shadow-bottom-sm {
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
